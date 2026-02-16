@@ -293,6 +293,9 @@ export class GameEngine {
 
         // Direction change particle
         this.addStepParticles(this.playerX, this.playerY + 16, 3);
+
+        // Move one step up after changing direction
+        this.handleStep();
     }
 
     updateDifficulty() {
@@ -560,8 +563,8 @@ export class GameEngine {
             this.playerDirection *= -1;
             soundManager.playDirectionChange();
             this.addStepParticles(this.playerX, this.playerY + 16, 3);
-            // After direction change, process next in queue
-            this.processInputQueue();
+            // Move one step up after changing direction
+            this.handleStep();
         }
     }
 
@@ -810,41 +813,6 @@ export class GameEngine {
         ctx.textAlign = 'center';
         ctx.fillText(this.playerDirection > 0 ? '→' : '←', arrowX, arrowY + 5);
 
-        // Speed indicator
-        const speedRatio = (this.moveSpeed - this.baseMoveSpeed) / (this.maxMoveSpeed - this.baseMoveSpeed);
-        const speedPercent = Math.round(speedRatio * 100);
-        const speedBoxW = 110;
-        const speedBoxH = 45;
-        const speedBoxX = w - padding - speedBoxW;
-        const speedBoxY = padding + 45;
-
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.beginPath();
-        ctx.roundRect(speedBoxX, speedBoxY, speedBoxW, speedBoxH, 12);
-        ctx.fill();
-
-        // Speed bar background
-        const sBarX = speedBoxX + 8;
-        const sBarY = speedBoxY + 30;
-        const sBarW = speedBoxW - 16;
-        const sBarH = 8;
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
-        ctx.beginPath();
-        ctx.roundRect(sBarX, sBarY, sBarW, sBarH, 4);
-        ctx.fill();
-
-        // Speed bar fill
-        const speedColor = speedRatio > 0.7 ? '#FF4444' : speedRatio > 0.3 ? '#FFB800' : '#44BBFF';
-        ctx.fillStyle = speedColor;
-        ctx.beginPath();
-        ctx.roundRect(sBarX, sBarY, sBarW * Math.max(0.05, speedRatio), sBarH, 4);
-        ctx.fill();
-
-        // Speed text
-        ctx.fillStyle = speedColor;
-        ctx.font = 'bold 11px "Outfit", sans-serif';
-        ctx.textAlign = 'left';
-        ctx.fillText(`⚡ 속도 ${speedPercent}%`, speedBoxX + 8, speedBoxY + 18);
     }
 
     setCharacter(character) {

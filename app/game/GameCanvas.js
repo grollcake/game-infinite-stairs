@@ -131,24 +131,27 @@ export default function GameCanvas({
         <div className="game-canvas-wrapper">
             {/* Secret auto-direction toggle — completely invisible */}
             {gameState === 'playing' && (
-                <button
+                <div
                     onClick={toggleAutoDirection}
-                    id="btn-auto-dir"
                     style={{
                         position: 'fixed',
-                        top: 0,
-                        left: 0,
+                        top: '10px',
+                        left: '10px',
                         zIndex: 200,
-                        width: 30,
-                        height: 30,
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'default',
-                        padding: 0,
-                        outline: 'none',
+                        fontSize: '10px',
+                        color: autoDir ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.25)',
+                        fontFamily: '"Outfit", sans-serif',
+                        cursor: 'pointer',
+                        padding: '4px 8px',
+                        background: 'rgba(0, 0, 0, 0.2)',
+                        borderRadius: '4px',
+                        backdropFilter: 'blur(4px)',
+                        userSelect: 'none',
+                        transition: 'color 0.2s ease'
                     }}
-                    aria-hidden="true"
-                />
+                >
+                    v0.1.0
+                </div>
             )}
 
             <canvas
