@@ -157,7 +157,7 @@ export const CHARACTERS = [
         id: 'king',
         name: '임금님',
         description: '5000점 달성 시 해금',
-        unlockScore: 500,
+        unlockScore: 5000,
         colors: {
             body: '#9B59B6',
             bodyDark: '#8E44AD',

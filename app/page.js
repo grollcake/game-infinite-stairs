@@ -110,7 +110,7 @@ export default function Home() {
           backdropFilter: 'blur(4px)',
           userSelect: 'none'
         }}>
-          v0.2.0
+          v0.3.0
         </div>
       )}
 

@@ -158,7 +158,7 @@ const GameCanvas = forwardRef(({
                         transition: 'color 0.2s ease'
                     }}
                 >
-                    v0.2.0
+                    v0.3.0
                 </div>
             )}
 

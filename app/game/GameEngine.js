@@ -264,8 +264,8 @@ export class GameEngine {
         const dx = nextStair.x - currentStair.x;
         const expectedDir = dx > 0 ? 1 : dx < 0 ? -1 : this.playerDirection;
 
-        // Fever mode or Auto-direction test mode: automatically face the right way
-        if (this.feverTimer > 0 || this.autoDirection) {
+        // Fever mode, Rocket mode or Auto-direction test mode: automatically face the right way
+        if (this.feverTimer > 0 || this.isRocketing || this.autoDirection) {
             this.playerDirection = expectedDir;
         }
 
@@ -303,8 +303,8 @@ export class GameEngine {
 
         nextStair.visited = true;
 
-        // Item Pickup (disabled during rocket or fever)
-        if (nextStair.item && !this.isRocketing && this.feverTimer <= 0) {
+        // Item Pickup
+        if (nextStair.item) {
             this.handleItemPickup(nextStair.item);
             nextStair.item = null;
         }
@@ -318,11 +318,6 @@ export class GameEngine {
         // Combo system
         this.combo++;
         this.comboTimer = 60;
-
-        // Combo reward every 10
-        if (this.combo > 0 && this.combo % 10 === 0) {
-            this.spawnComboReward();
-        }
 
         // Sound
         soundManager.playStep(this.score);
@@ -384,6 +379,7 @@ export class GameEngine {
             case 'fever':
                 this.feverTimer = 300; // 5 seconds at 60fps
                 this.screenShake = 10;
+                this.clearUpcomingItems(60);
                 break;
             case 'rocket':
                 this.startRocket();
@@ -391,36 +387,19 @@ export class GameEngine {
         }
     }
 
-    spawnComboReward() {
-        // Find the top-most visible stair (or just slightly above the screen)
-        const visibleTop = this.cameraY;
-
-        // Find indices of stairs that are currently in or slightly above the view
-        // Let's pick a stair that is about 15-20 steps ahead of the current position to be sure it's "top-ish"
-        const targetIndex = Math.min(this.stairs.length - 1, this.currentStairIndex + 25);
-        const targetStair = this.stairs[targetIndex];
-
-        if (targetStair && !targetStair.item && !this.isRocketing && this.feverTimer <= 0) {
-            // Pick a random item from available types
-            const randomType = this.itemTypes[Math.floor(Math.random() * this.itemTypes.length)];
-            targetStair.item = { ...randomType };
-
-            // Visual text effect
-            this.addFloatingText(`🔥 ${this.combo} COMBO!!`, this.playerX, this.playerY - 60, '#FFD700', 1.5);
-            setTimeout(() => {
-                this.addFloatingText('✨ NEW ITEM SPAWNED!!', this.playerX, this.playerY - 40, '#FFFFFF', 1.1);
-            }, 300);
-
-            // Camera shake or sound enhancement
-            this.screenShake = 5;
-            soundManager.playMilestone(); // Using milestone sound for feedback
-        }
-    }
-
     startRocket() {
         this.isRocketing = true;
         this.rocketStepsRemaining = 20;
+        this.clearUpcomingItems(25);
         this.addFloatingText('🚀 ROCKET JUMP!', this.width / 2, this.height / 2, '#FF8800', 1.5);
+    }
+
+    clearUpcomingItems(count) {
+        const start = this.currentStairIndex + 1;
+        const end = Math.min(this.stairs.length, start + count);
+        for (let i = start; i < end; i++) {
+            this.stairs[i].item = null;
+        }
     }
 
     handleDirectionChange() {
