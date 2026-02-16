@@ -137,8 +137,8 @@ export default function Home() {
               👑 최고 기록: {highScore}층
             </div>
           )}
-          <div className="coin-badge">
-            💰 보유 코인: {totalCoins}개
+          <div className="coin-badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+            <img src="/icons8-coin-100.png" alt="coin" width={18} height={18} style={{ filter: 'invert(1)' }} /> 보유 코인: {totalCoins}개
           </div>
         </div>
 
@@ -178,11 +178,11 @@ export default function Home() {
           <div className="result-highscore">
             👑 최고 기록: {highScore}층
           </div>
-          <div style={{ marginTop: '10px', color: '#FFD700', fontWeight: 'bold' }}>
-            💰 획득 코인: +{earnedCoins}
+          <div style={{ marginTop: '10px', color: '#FFD700', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
+            <img src="/icons8-coin-100.png" alt="coin" width={24} height={24} style={{ filter: 'invert(1)' }} /> 획득 코인: +{earnedCoins}
           </div>
-          <div style={{ fontSize: '12px', opacity: 0.7 }}>
-            보유 코인: {totalCoins}
+          <div style={{ fontSize: '12px', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px', gap: '5px' }}>
+            <img src="/icons8-coin-100.png" alt="coin" width={16} height={16} style={{ filter: 'invert(1)' }} /> 보유 코인: {totalCoins}
           </div>
         </div>
 
@@ -203,12 +203,12 @@ export default function Home() {
 
         <div className="result-buttons fade-in-up fade-in-up-4">
           {canRevive && totalCoins >= 50 && (
-            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px' }}>
-              💎 50코인으로 부활
+            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+              <img src="/icons8-coin-100.png" alt="coin" width={32} height={32} /> 50코인으로 부활
             </button>
           )}
-          <button className="btn-play" onClick={handleStartGame} id="btn-retry">
-            🔄 다시 도전
+          <button className="btn-play" onClick={handleStartGame} id="btn-retry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+            <img src="/icons8-retry-60.png" alt="retry" width={32} height={32} style={{ filter: 'invert(1)' }} /> 다시 도전
           </button>
           <button className="btn-secondary" onClick={handleBackToMenu} id="btn-to-menu">
             🏠 메인 화면
