@@ -16,7 +16,7 @@ export class GameEngine {
         // Game state
         this.state = 'ready'; // ready, playing, falling, gameover
         this.score = 0;
-        this.highScore = Math.max(5000, parseInt(localStorage.getItem('infiniteStairs_highScore') || '0'));
+        this.highScore = parseInt(localStorage.getItem('infiniteStairs_highScore') || '0');
         this.totalCoins = parseInt(localStorage.getItem('infiniteStairs_totalCoins') || '0');
         this.character = character || CHARACTERS[0];
         this.frame = 0;

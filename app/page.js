@@ -9,7 +9,7 @@ export default function Home() {
   const [screen, setScreen] = useState('menu'); // menu, playing, result, charSelect
   const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
   const [lastScore, setLastScore] = useState(0);
-  const [highScore, setHighScore] = useState(5000);
+  const [highScore, setHighScore] = useState(0);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [newUnlocks, setNewUnlocks] = useState([]);
   const [muted, setMuted] = useState(false);
@@ -22,7 +22,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('infiniteStairs_highScore');
-    if (saved) setHighScore(Math.max(5000, parseInt(saved)));
+    if (saved) setHighScore(parseInt(saved));
     const savedCoins = localStorage.getItem('infiniteStairs_totalCoins');
     if (savedCoins) setTotalCoins(parseInt(savedCoins));
     const savedChar = localStorage.getItem('infiniteStairs_selectedChar');
@@ -66,7 +66,7 @@ export default function Home() {
   }, []);
 
   const handleSelectCharacter = useCallback((char) => {
-    // Use state which includes the 5000 min limit we added
+    // Check against high score
     if (highScore >= char.unlockScore) {
       setSelectedChar(char);
       localStorage.setItem('infiniteStairs_selectedChar', char.id);
@@ -110,7 +110,7 @@ export default function Home() {
           backdropFilter: 'blur(4px)',
           userSelect: 'none'
         }}>
-          v0.4.0
+          v0.5.0
         </div>
       )}
 
