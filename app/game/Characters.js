@@ -15,6 +15,14 @@ export const CHARACTERS = [
             feet: '#333333',
             hat: null,
             accent: '#5BA0E9',
+        },
+        theme: {
+            bgType: 'default',
+            stairType: 'default',
+            bg: { h: 215, s: 60, l: 15 },
+            stair: '#5D7C9D',
+            stairNext: '#8FAECF',
+            stairVisited: '#4B90D6',
         }
     },
     {
@@ -32,6 +40,14 @@ export const CHARACTERS = [
             feet: '#2D2D2D',
             hat: '#C00000',
             accent: '#FF4444',
+        },
+        theme: {
+            bgType: 'dojo',
+            stairType: 'wood',
+            bg: { h: 350, s: 50, l: 10 },
+            stair: '#3D3D3D',
+            stairNext: '#5C5C5C',
+            stairVisited: '#9E2A2B',
         }
     },
     {
@@ -49,6 +65,14 @@ export const CHARACTERS = [
             feet: '#FFD700',
             hat: '#FFD700',
             accent: '#FF85C8',
+        },
+        theme: {
+            bgType: 'castle',
+            stairType: 'marble',
+            bg: { h: 325, s: 60, l: 85 }, // Much lighter pink
+            stair: '#FFC0CB',
+            stairNext: '#FFE4E1',
+            stairVisited: '#FF69B4',
         }
     },
     {
@@ -66,6 +90,14 @@ export const CHARACTERS = [
             feet: '#606070',
             hat: '#FF6600',
             accent: '#B0B0C0',
+        },
+        theme: {
+            bgType: 'cyber',
+            stairType: 'metal',
+            bg: { h: 210, s: 30, l: 10 },
+            stair: '#4A5568',
+            stairNext: '#718096',
+            stairVisited: '#22D3EE',
         }
     },
     {
@@ -83,6 +115,14 @@ export const CHARACTERS = [
             feet: '#2D2D2D',
             hat: '#C0C0C0',
             accent: '#D2B48C',
+        },
+        theme: {
+            bgType: 'ocean',
+            stairType: 'wood_plank',
+            bg: { h: 25, s: 40, l: 15 },
+            stair: '#8B5E3C',
+            stairNext: '#A67C52',
+            stairVisited: '#CD853F',
         }
     },
     {
@@ -100,6 +140,14 @@ export const CHARACTERS = [
             feet: '#333333',
             hat: '#FFFFFF',
             accent: '#FF4444',
+        },
+        theme: {
+            bgType: 'kitchen',
+            stairType: 'checkered',
+            bg: { h: 40, s: 20, l: 90 }, // Light cream
+            stair: '#E2E8F0',
+            stairNext: '#FFFFFF',
+            stairVisited: '#F6AD55',
         }
     },
     {
@@ -117,6 +165,14 @@ export const CHARACTERS = [
             feet: '#27AE60',
             hat: null,
             accent: '#A9DFBF',
+        },
+        theme: {
+            bgType: 'space',
+            stairType: 'neon',
+            bg: { h: 140, s: 50, l: 8 },
+            stair: '#2F855A',
+            stairNext: '#48BB78',
+            stairVisited: '#9F7AEA',
         }
     },
     {
@@ -134,6 +190,14 @@ export const CHARACTERS = [
             feet: '#000000',
             hat: '#8E44AD',
             accent: '#333333',
+        },
+        theme: {
+            bgType: 'night',
+            stairType: 'gothic',
+            bg: { h: 260, s: 40, l: 8 },
+            stair: '#2D3748',
+            stairNext: '#4A5568',
+            stairVisited: '#E53E3E',
         }
     },
     {
@@ -151,6 +215,14 @@ export const CHARACTERS = [
             feet: '#E74C3C',
             hat: null,
             accent: '#F1C40F',
+        },
+        theme: {
+            bgType: 'city',
+            stairType: 'glass',
+            bg: { h: 200, s: 70, l: 20 },
+            stair: '#3182CE',
+            stairNext: '#63B3ED',
+            stairVisited: '#F6E05E',
         }
     },
     {
@@ -168,6 +240,14 @@ export const CHARACTERS = [
             feet: '#333333',
             hat: '#F1C40F',
             accent: '#8E44AD',
+        },
+        theme: {
+            bgType: 'palace',
+            stairType: 'gold',
+            bg: { h: 45, s: 80, l: 15 },
+            stair: '#B7791F',
+            stairNext: '#D69E2E',
+            stairVisited: '#805AD5',
         }
     },
 ];

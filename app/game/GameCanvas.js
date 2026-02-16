@@ -33,13 +33,14 @@ const GameCanvas = forwardRef(({
 
             let w, h;
             if (isLandscape) {
-                // Landscape: use full height, limit width to aspect ratio
+                // Landscape: use full height, width based on 3:4 ratio
                 h = vh;
-                w = Math.min(vw * 0.6, h * 0.65);
+                w = Math.min(vw * 0.7, h * 0.75);
+                w = Math.max(w, 300);
             } else {
-                // Portrait: same as before
-                w = Math.min(vw, 420);
-                h = Math.min(vh - 20, 800);
+                // Portrait: scale to viewport, generous on tablets
+                w = Math.min(vw * 0.95, 600);
+                h = Math.min(vh - 20, w * 1.7);
             }
             setCanvasSize({ width: Math.floor(w), height: Math.floor(h) });
         };
@@ -158,7 +159,7 @@ const GameCanvas = forwardRef(({
                         transition: 'color 0.2s ease'
                     }}
                 >
-                    v0.3.0
+                    v0.4.0
                 </div>
             )}
 

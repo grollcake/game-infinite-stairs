@@ -3,7 +3,6 @@ import "./globals.css";
 export const metadata = {
   title: "무한의 계단 - Infinite Stairs",
   description: "두 개의 버튼으로 끊임없이 계단을 오르는 중독성 있는 2D 아케이드 게임!",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no",
 };
 
 export default function RootLayout({ children }) {

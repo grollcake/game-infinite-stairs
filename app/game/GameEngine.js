@@ -71,6 +71,16 @@ export class GameEngine {
         this.comboTimer = 0;
         this.floatingTexts = [];
 
+        // Set initial theme based on character
+        const theme = this.character.theme || {
+            bg: { h: 220, s: 30, l: 15 },
+            stair: '#7B8FA0',
+            stairNext: '#9AB0C4',
+            stairVisited: '#5A90D0',
+        };
+        this.bgHue = theme.bg.h;
+        this.targetBgHue = theme.bg.h;
+
         // Background color themes per 100 floors
         this.bgThemes = [
             { h: 220, s: 30, l: 15 },  // Deep blue
@@ -112,6 +122,10 @@ export class GameEngine {
         this.isShielding = false;
         this.shieldAnimProgress = 0;
         this.itemSpawnCooldown = 0;
+
+        // Fire effect
+        this.fireParticles = [];
+        this.fireIntensity = 0;
 
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
@@ -443,7 +457,7 @@ export class GameEngine {
 
     triggerGameOver() {
         this.state = 'gameover';
-        this.screenShake = 20;
+        this.screenShake = 8;
         soundManager.playGameOver();
 
         // Death particles
@@ -559,6 +573,10 @@ export class GameEngine {
         this.isRocketing = false;
         this.rocketStepsRemaining = 0;
 
+        // Clear fire
+        this.fireParticles = [];
+        this.fireIntensity = 0;
+
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
         this.cameraY = 0;
@@ -581,29 +599,74 @@ export class GameEngine {
             this.targetCameraY = this.playerY - this.height * 0.55;
             this.cameraY += (this.targetCameraY - this.cameraY) * 0.04;
 
-            // Spawn trail particles while falling
-            if (this.frame % 3 === 0) {
-                this.particles.push({
-                    x: this.playerX + (Math.random() - 0.5) * 10,
-                    y: this.playerY,
+            // Spawn fire particles from bottom of screen
+            this.fireIntensity = Math.min(1, this.fireIntensity + 0.03);
+            const spawnCount = Math.floor(3 + this.fireIntensity * 5);
+            for (let i = 0; i < spawnCount; i++) {
+                this.fireParticles.push({
+                    x: Math.random() * this.width,
+                    y: this.height + Math.random() * 20,
                     vx: (Math.random() - 0.5) * 2,
-                    vy: -Math.random() * 2,
-                    life: 15,
-                    maxLife: 15,
-                    color: this.character.colors.body,
-                    size: Math.random() * 3 + 1,
+                    vy: -(2 + Math.random() * 4 + this.fireIntensity * 3),
+                    life: 30 + Math.random() * 30,
+                    maxLife: 60,
+                    size: 8 + Math.random() * 15,
+                    hue: Math.random() * 40, // 0=red, 40=yellow
                 });
+            }
+
+            // Update fire particles
+            for (let i = this.fireParticles.length - 1; i >= 0; i--) {
+                const p = this.fireParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx += (Math.random() - 0.5) * 0.5;
+                p.size *= 0.97;
+                p.life--;
+                if (p.life <= 0 || p.size < 1) {
+                    this.fireParticles.splice(i, 1);
+                }
             }
 
             this.updateParticles();
             this.updateFloatingTexts();
 
-            // Screen shake during fall
-            this.screenShake = 5;
+            // Brief screen shake at start of fall only
+            if (this.screenShake < 2) this.screenShake = 2;
 
             // Once fallen far enough below the last stair, trigger game over
             if (this.playerY > this.fallStartY + 200) {
                 this.triggerGameOver();
+            }
+            return;
+        }
+
+        // Keep fire alive during gameover
+        if (this.state === 'gameover' && this.fireParticles.length > 0) {
+            // Continue spawning fire
+            for (let i = 0; i < 4; i++) {
+                this.fireParticles.push({
+                    x: Math.random() * this.width,
+                    y: this.height + Math.random() * 20,
+                    vx: (Math.random() - 0.5) * 2,
+                    vy: -(2 + Math.random() * 5),
+                    life: 30 + Math.random() * 30,
+                    maxLife: 60,
+                    size: 8 + Math.random() * 15,
+                    hue: Math.random() * 40,
+                });
+            }
+            // Update existing fire
+            for (let i = this.fireParticles.length - 1; i >= 0; i--) {
+                const p = this.fireParticles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vx += (Math.random() - 0.5) * 0.5;
+                p.size *= 0.97;
+                p.life--;
+                if (p.life <= 0 || p.size < 1) {
+                    this.fireParticles.splice(i, 1);
+                }
             }
             return;
         }
@@ -728,10 +791,10 @@ export class GameEngine {
         // Update floating texts
         this.updateFloatingTexts();
 
-        // Background color transition
-        const themeIndex = Math.floor(this.score / 100) % this.bgThemes.length;
-        const theme = this.bgThemes[themeIndex];
-        this.targetBgHue = theme.h;
+        // Background color transition (stick to character theme mostly)
+        const theme = this.character.theme || { bg: { h: 220, s: 30, l: 15 } };
+        // Slight hue shift based on score to keep it dynamic but close to theme
+        this.targetBgHue = theme.bg.h + (Math.floor(this.score / 500) * 10) % 40;
         this.bgHue += (this.targetBgHue - this.bgHue) * 0.02;
 
         // Screen shake decay
@@ -786,8 +849,8 @@ export class GameEngine {
 
         ctx.save();
 
-        // Screen shake
-        if (this.screenShake > 0.5) {
+        // Screen shake (disabled during gameover)
+        if (this.screenShake > 0.5 && this.state !== 'gameover') {
             ctx.translate(
                 (Math.random() - 0.5) * this.screenShake,
                 (Math.random() - 0.5) * this.screenShake
@@ -795,24 +858,7 @@ export class GameEngine {
         }
 
         // Background
-        const themeIndex = Math.floor(this.score / 100) % this.bgThemes.length;
-        const theme = this.bgThemes[themeIndex];
-        const gradient = ctx.createLinearGradient(0, 0, 0, h);
-        gradient.addColorStop(0, `hsl(${theme.h}, ${theme.s}%, ${theme.l}%)`);
-        gradient.addColorStop(1, `hsl(${theme.h + 20}, ${theme.s + 10}%, ${theme.l + 5}%)`);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
-
-        // Stars
-        this.stars.forEach(star => {
-            star.twinkle += star.speed;
-            const alpha = 0.3 + Math.sin(star.twinkle) * 0.3;
-            const starScreenY = ((star.y - this.cameraY * 0.3) % (h * 2));
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            ctx.beginPath();
-            ctx.arc(star.x, starScreenY, star.size, 0, Math.PI * 2);
-            ctx.fill();
-        });
+        this.renderBackground(ctx, w, h);
 
         // Milestone flash
         if (this.milestoneFlash > 0) {
@@ -869,6 +915,11 @@ export class GameEngine {
         // Floating texts (screen space)
         this.renderFloatingTexts(ctx);
 
+        // Fire overlay (screen space, on top of everything)
+        if ((this.state === 'falling' || this.state === 'gameover') && this.fireParticles.length > 0) {
+            this.renderFire(ctx);
+        }
+
         ctx.restore();
     }
 
@@ -890,21 +941,23 @@ export class GameEngine {
             ctx.fillRect(sx + 3, sy + 3, sw, sh);
 
             // Stair body
+            const theme = this.character.theme || {
+                stair: '#7B8FA0',
+                stairNext: '#9AB0C4',
+                stairVisited: '#5A90D0',
+            };
+
             if (stair.visited) {
-                const themeIdx = Math.floor(this.score / 100) % this.bgThemes.length;
-                const hue = this.bgThemes[themeIdx].h;
-                ctx.fillStyle = `hsl(${(hue + 120) % 360}, 50%, 55%)`;
+                ctx.fillStyle = theme.stairVisited;
             } else if (i === this.currentStairIndex + 1) {
                 // Next stair highlight (subtle glow)
-                ctx.fillStyle = '#AABBCC';
+                ctx.fillStyle = theme.stairNext;
             } else {
-                ctx.fillStyle = '#8899AA';
+                ctx.fillStyle = theme.stair;
             }
 
-            // Rounded stair
-            ctx.beginPath();
-            ctx.roundRect(sx, sy, sw, sh, 4);
-            ctx.fill();
+            // Render stair content
+            this.renderStair(ctx, sx, sy, sw, sh, stair, i, theme);
 
             // Render item if present
             if (stair.item) {
@@ -969,6 +1022,168 @@ export class GameEngine {
             ctx.fill();
         }
         ctx.globalAlpha = 1;
+    }
+
+    renderFire(ctx) {
+        ctx.save();
+
+        // Glowing base at the bottom
+        const baseGrad = ctx.createLinearGradient(0, this.height, 0, this.height - 120 * this.fireIntensity);
+        baseGrad.addColorStop(0, `rgba(255, 80, 0, ${0.6 * this.fireIntensity})`);
+        baseGrad.addColorStop(0.4, `rgba(255, 40, 0, ${0.3 * this.fireIntensity})`);
+        baseGrad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctx.fillStyle = baseGrad;
+        ctx.fillRect(0, this.height - 120 * this.fireIntensity, this.width, 120 * this.fireIntensity);
+
+        // Fire particles
+        for (const p of this.fireParticles) {
+            const lifeRatio = p.life / p.maxLife;
+            const alpha = lifeRatio * 0.8;
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = `hsl(${p.hue}, 100%, ${50 + (1 - lifeRatio) * 20}%)`;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * lifeRatio, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        ctx.globalAlpha = 1;
+        ctx.restore();
+    }
+
+    renderBackground(ctx, w, h) {
+        const theme = this.character.theme || {
+            bgType: 'default',
+            bg: { h: 220, s: 30, l: 15 }
+        };
+        const bg = theme.bg;
+
+        // Base Gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, h);
+        gradient.addColorStop(0, `hsl(${this.bgHue}, ${bg.s}%, ${bg.l}%)`);
+        gradient.addColorStop(1, `hsl(${this.bgHue + 20}, ${bg.s + 10}%, ${bg.l + 5}%)`);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, w, h);
+
+        const type = theme.bgType || 'default';
+
+        // Draw background elements based on type
+        if (type === 'default' || type === 'ocean' || type === 'space' || type === 'city' || type === 'night') {
+            // Stars / Generic particles
+            this.stars.forEach(star => {
+                star.twinkle += star.speed;
+                const alpha = 0.3 + Math.sin(star.twinkle) * 0.3;
+                const starScreenY = ((star.y - this.cameraY * (type === 'ocean' ? 0.1 : 0.3)) % (h * 2));
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x, starScreenY, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        if (type === 'castle') {
+            // Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            for (let i = 0; i < 5; i++) {
+                const cy = ((i * 150 - this.cameraY * 0.2) % (h + 200)) - 100;
+                const cx = (i * 100) % w;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 60, 0, Math.PI * 2);
+                ctx.arc(cx + 50, cy + 20, 70, 0, Math.PI * 2);
+                ctx.arc(cx - 50, cy + 20, 50, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        if (type === 'dojo') {
+            // Bamboo silhouettes
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            for (let i = 0; i < 6; i++) {
+                const bx = (w / 6) * i + 20;
+                ctx.fillRect(bx, 0, 10, h);
+                // Joints
+                for (let j = 0; j < h / 100; j++) {
+                    const by = ((j * 100 - this.cameraY * 0.5) % (h + 100)) - 50;
+                    ctx.fillRect(bx - 2, by, 14, 4);
+                }
+            }
+        }
+
+        if (type === 'cyber') {
+            // Circuit lines
+            ctx.strokeStyle = 'rgba(0, 255, 100, 0.1)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < h; i += 100) {
+                const ly = ((i - this.cameraY * 0.5) % (h + 100)) - 50;
+                ctx.moveTo(0, ly);
+                ctx.lineTo(w, ly);
+                ctx.moveTo(0, ly + 20);
+                ctx.lineTo(w * 0.3, ly + 20);
+                ctx.lineTo(w * 0.35, ly + 60);
+                ctx.lineTo(w, ly + 60);
+            }
+            ctx.stroke();
+        }
+
+        if (type === 'kitchen') {
+            // Tablecloth pattern
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+            const checkerSize = 40;
+            const oy = -(this.cameraY * 0.5) % (checkerSize * 2);
+            for (let y = oy - checkerSize; y < h; y += checkerSize) {
+                for (let x = 0; x < w; x += checkerSize) {
+                    if (((x / checkerSize) + Math.floor(y / checkerSize)) % 2 === 0) {
+                        ctx.fillRect(x, y, checkerSize, checkerSize);
+                    }
+                }
+            }
+        }
+    }
+
+    renderStair(ctx, sx, sy, sw, sh, stair, index, theme) {
+        const type = theme.stairType || 'default';
+
+        // Base
+        if (stair.visited) {
+            ctx.fillStyle = theme.stairVisited;
+        } else if (index === this.currentStairIndex + 1) {
+            ctx.fillStyle = theme.stairNext;
+        } else {
+            ctx.fillStyle = theme.stair;
+        }
+
+        ctx.beginPath();
+        ctx.roundRect(sx, sy, sw, sh, 4);
+        ctx.fill();
+
+        // Details based on type
+        if (type === 'marble') {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sx + 5, sy + sh);
+            ctx.lineTo(sx + sw - 10, sy);
+            ctx.moveTo(sx + 15, sy + sh);
+            ctx.lineTo(sx + sw, sy + 5);
+            ctx.stroke();
+        } else if (type === 'wood' || type === 'wood_plank') {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(sx, sy + 5, sw, 2);
+            ctx.fillRect(sx, sy + 15, sw, 2);
+        } else if (type === 'checkered') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.fillRect(sx, sy, sw / 2, sh / 2);
+            ctx.fillRect(sx + sw / 2, sy + sh / 2, sw / 2, sh / 2);
+        } else if (type === 'metal') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.fillRect(sx + 2, sy + 2, 4, 4);
+            ctx.fillRect(sx + sw - 6, sy + 2, 4, 4);
+            ctx.fillRect(sx + 2, sy + sh - 6, 4, 4);
+            ctx.fillRect(sx + sw - 6, sy + sh - 6, 4, 4);
+        } else if (type === 'gold') {
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+            ctx.fillRect(sx + 5, sy + 5, sw - 10, sh - 10);
+        }
     }
 
     renderFloatingTexts(ctx) {
