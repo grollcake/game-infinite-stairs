@@ -96,6 +96,22 @@ export class GameEngine {
             });
         }
 
+        // Items
+        this.items = [];
+        this.activeShield = false;
+        this.feverTimer = 0;
+        this.isRocketing = false;
+        this.rocketStepsRemaining = 0;
+        this.itemTypes = [
+            { id: 'shield', label: '🛡️', color: '#44BBFF', chance: 0.04 },
+            { id: 'fever', label: '🔥', color: '#FF4444', chance: 0.03 },
+            { id: 'rocket', label: '🚀', color: '#FF8800', chance: 0.02 }
+        ];
+
+        this.isShielding = false;
+        this.shieldAnimProgress = 0;
+        this.itemSpawnCooldown = 0;
+
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
     }
@@ -107,13 +123,34 @@ export class GameEngine {
         let dir = 1; // 1 = right, -1 = left
 
         for (let i = 0; i < 200; i++) {
-            this.stairs.push({
+            const stair = {
                 x: x,
                 y: y,
                 direction: dir,
                 width: this.stairWidth,
                 visited: i === 0,
-            });
+                item: null
+            };
+
+            // Spawn item (don't spawn on first few stairs or during cooldown)
+            if (i > 10 && this.itemSpawnCooldown <= 0 && Math.random() < 0.15) {
+                const rand = Math.random();
+                let cumulative = 0;
+                for (const type of this.itemTypes) {
+                    cumulative += type.chance * 2;
+                    if (rand < cumulative) {
+                        stair.item = { ...type };
+                        if (type.id === 'rocket') {
+                            this.itemSpawnCooldown = 20;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (this.itemSpawnCooldown > 0) this.itemSpawnCooldown--;
+
+            this.stairs.push(stair);
 
             // Next stair direction
             if (Math.random() < 0.4) {
@@ -152,13 +189,36 @@ export class GameEngine {
             if (x < 80) { dir = 1; x = 80; }
             if (x > this.width - 80) { dir = -1; x = this.width - 80; }
 
-            this.stairs.push({
+            const stair = {
                 x: x,
                 y: y,
                 direction: dir,
                 width: this.stairWidth,
                 visited: false,
-            });
+                item: null
+            };
+
+            // Spawn item
+            if (this.itemSpawnCooldown <= 0 && Math.random() < 0.1) {
+                const rand = Math.random();
+                let cumulative = 0;
+                const totalChance = this.itemTypes.reduce((sum, t) => sum + t.chance, 0);
+                const normalizedRand = rand * totalChance;
+
+                for (const type of this.itemTypes) {
+                    cumulative += type.chance;
+                    if (normalizedRand < cumulative) {
+                        stair.item = { ...type };
+                        if (type.id === 'rocket') {
+                            this.itemSpawnCooldown = 20;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (this.itemSpawnCooldown > 0) this.itemSpawnCooldown--;
+            this.stairs.push(stair);
         }
     }
 
@@ -202,15 +262,29 @@ export class GameEngine {
         const dx = nextStair.x - currentStair.x;
         const expectedDir = dx > 0 ? 1 : dx < 0 ? -1 : this.playerDirection;
 
-        // Auto-direction test mode: automatically face the right way
-        if (this.autoDirection) {
+        // Fever mode or Auto-direction test mode: automatically face the right way
+        if (this.feverTimer > 0 || this.autoDirection) {
             this.playerDirection = expectedDir;
         }
 
         if (this.playerDirection !== expectedDir) {
-            // Wrong direction - jump into the void and fall!
-            this.startFalling();
-            return;
+            if (this.activeShield) {
+                this.activeShield = false;
+                this.isShielding = true;
+                this.shieldAnimProgress = 0;
+                this.moveStartX = this.playerX;
+                this.moveStartY = this.playerY;
+                // Target is the current stair (returning to safety)
+                this.targetX = currentStair.x;
+                this.targetY = currentStair.y - 16;
+                this.addFloatingText('SHIELD SAVED!', this.playerX, this.playerY - 50, '#44BBFF', 1.2);
+                soundManager.playDirectionChange(); // Sound feedback
+                return;
+            } else {
+                // Wrong direction - jump into the void and fall!
+                this.startFalling();
+                return;
+            }
         }
 
         // Correct step!
@@ -226,8 +300,15 @@ export class GameEngine {
         this.moveStartY = startY;
 
         nextStair.visited = true;
+
+        // Item Pickup
+        if (nextStair.item) {
+            this.handleItemPickup(nextStair.item);
+            nextStair.item = null;
+        }
+
         this.currentStairIndex = nextIndex;
-        this.score++;
+        this.score += this.feverTimer > 0 ? 2 : 1;
 
         // Energy recovery
         this.energy = Math.min(this.maxEnergy, this.energy + this.energyRecoverAmount);
@@ -276,6 +357,37 @@ export class GameEngine {
             this.highScore = this.score;
             localStorage.setItem('infiniteStairs_highScore', this.highScore.toString());
         }
+    }
+
+    handleItemPickup(item) {
+        soundManager.playItemPickup();
+        this.addFloatingText(`${item.label} GET!`, this.playerX, this.playerY - 40, item.color, 1.2);
+
+        switch (item.id) {
+            case 'energy':
+                this.energy = Math.min(this.maxEnergy, this.energy + 30);
+                break;
+            case 'coin':
+                this.score += 10;
+                this.addFloatingText('+10', this.playerX + 20, this.playerY - 20, '#FFD700');
+                break;
+            case 'shield':
+                this.activeShield = true;
+                break;
+            case 'fever':
+                this.feverTimer = 300; // 5 seconds at 60fps
+                this.screenShake = 10;
+                break;
+            case 'rocket':
+                this.startRocket();
+                break;
+        }
+    }
+
+    startRocket() {
+        this.isRocketing = true;
+        this.rocketStepsRemaining = 20;
+        this.addFloatingText('🚀 ROCKET JUMP!', this.width / 2, this.height / 2, '#FF8800', 1.5);
     }
 
     handleDirectionChange() {
@@ -401,6 +513,12 @@ export class GameEngine {
         this.screenShake = 0;
         this.milestoneFlash = 0;
 
+        // Reset item states
+        this.activeShield = false;
+        this.feverTimer = 0;
+        this.isRocketing = false;
+        this.rocketStepsRemaining = 0;
+
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
         this.cameraY = 0;
@@ -452,8 +570,31 @@ export class GameEngine {
 
         if (this.state !== 'playing') return;
 
-        // Energy decay
-        this.energy -= this.energyDecayRate;
+        // Fever mode handling
+        if (this.feverTimer > 0) {
+            this.feverTimer--;
+            this.energy = Math.min(this.maxEnergy, this.energy + 0.2); // slight energy recovery during fever
+            if (this.frame % 5 === 0) {
+                this.addStepParticles(this.playerX, this.playerY + 16, 2);
+            }
+        }
+
+        // Rocket handling
+        if (this.isRocketing) {
+            if (this.frame % 3 === 0) {
+                this.handleStep();
+                this.rocketStepsRemaining--;
+                if (this.rocketStepsRemaining <= 0) {
+                    this.isRocketing = false;
+                }
+            }
+        }
+
+        // Energy decay (only if not rocketing)
+        if (!this.isRocketing) {
+            this.energy -= this.feverTimer > 0 ? this.energyDecayRate * 0.2 : this.energyDecayRate;
+        }
+
         if (this.energy <= 0) {
             this.energy = 0;
             this.triggerGameOver();
@@ -476,8 +617,39 @@ export class GameEngine {
             this.moveSpeed = this.baseMoveSpeed + (this.maxMoveSpeed - this.baseMoveSpeed) * eased;
         }
 
-        // Move animation
-        if (this.isMoving) {
+        // Shield recovery animation handling
+        if (this.isShielding) {
+            this.shieldAnimProgress += 0.04;
+            if (this.shieldAnimProgress >= 1) {
+                this.shieldAnimProgress = 1;
+                this.isShielding = false;
+                this.playerX = this.targetX;
+                this.playerY = this.targetY;
+                this.playerDirection *= -1; // Face the correct way now
+            } else {
+                const t = this.shieldAnimProgress;
+                if (t < 0.4) {
+                    // Stage 1: Jump into void (wrong direction)
+                    const subT = t / 0.4;
+                    const jumpDist = 40 * subT;
+                    this.playerX = this.moveStartX + (this.playerDirection * jumpDist);
+                    this.playerY = this.moveStartY + Math.sin(subT * Math.PI) * -30 + (subT * subT * 40);
+                } else {
+                    // Stage 2: Pull back to safety
+                    const subT = (t - 0.4) / 0.6;
+                    const easeOut = 1 - Math.pow(1 - subT, 3);
+                    const currentWrongX = this.moveStartX + (this.playerDirection * 40);
+                    const currentDeepY = this.moveStartY + 40;
+                    this.playerX = currentWrongX + (this.targetX - currentWrongX) * easeOut;
+                    this.playerY = currentDeepY + (this.targetY - currentDeepY) * easeOut;
+                }
+            }
+            // Screen shake while shielding
+            this.screenShake = 2;
+        }
+
+        // Move animation (only if not shielding)
+        if (this.isMoving && !this.isShielding) {
             this.moveProgress += this.moveSpeed;
             if (this.moveProgress >= 1) {
                 this.moveProgress = 1;
@@ -627,6 +799,24 @@ export class GameEngine {
             1.1
         );
 
+        // Render shield effect during recovery or when active
+        if (this.isShielding || this.activeShield) {
+            const alpha = this.isShielding ? (1 - this.shieldAnimProgress) : 0.6;
+            ctx.save();
+            ctx.translate(this.playerX, this.playerY + 5);
+            ctx.beginPath();
+            ctx.arc(0, 0, 30, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(68, 187, 255, ${alpha})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            // Glow
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#44BBFF';
+            ctx.fillStyle = `rgba(68, 187, 255, ${alpha * 0.2})`;
+            ctx.fill();
+            ctx.restore();
+        }
+
         // Render particles (in world space)
         this.renderParticles(ctx);
 
@@ -676,6 +866,38 @@ export class GameEngine {
             ctx.beginPath();
             ctx.roundRect(sx, sy, sw, sh, 4);
             ctx.fill();
+
+            // Render item if present
+            if (stair.item) {
+                ctx.save();
+                ctx.translate(stair.x, sy - 15);
+                const bob = Math.sin(this.frame * 0.1) * 5;
+                ctx.translate(0, bob);
+
+                // Item shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.beginPath();
+                ctx.ellipse(0, 18 - bob, 10, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Item aura
+                const aura = ctx.createRadialGradient(0, 5, 2, 0, 5, 15);
+                aura.addColorStop(0, stair.item.color + '66'); // 40% alpha
+                aura.addColorStop(1, stair.item.color + '00'); // 0% alpha
+                ctx.fillStyle = aura;
+                ctx.beginPath();
+                ctx.arc(0, 5, 15, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Item label
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = stair.item.color;
+                ctx.font = '22px serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(stair.item.label, 0, 10);
+
+                ctx.restore();
+            }
 
             // Stair highlight
             ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -727,6 +949,7 @@ export class GameEngine {
 
     renderHUD(ctx) {
         const w = this.width;
+        const h = this.height;
         const padding = 15;
 
         // Score display
@@ -813,6 +1036,44 @@ export class GameEngine {
         ctx.textAlign = 'center';
         ctx.fillText(this.playerDirection > 0 ? '→' : '←', arrowX, arrowY + 5);
 
+        // Fever Mode Countdown
+        if (this.feverTimer > 0) {
+            const secondsLeft = (this.feverTimer / 60).toFixed(1);
+            const feverProgress = this.feverTimer / 300;
+
+            ctx.save();
+            ctx.translate(w / 2, h / 2 - 100);
+
+            // Background bar
+            const barW = 120;
+            const barH = 8;
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            ctx.beginPath();
+            ctx.roundRect(-barW / 2, 35, barW, barH, 4);
+            ctx.fill();
+
+            // Progress bar
+            ctx.fillStyle = '#FF4444';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#FF0000';
+            ctx.beginPath();
+            ctx.roundRect(-barW / 2, 35, barW * feverProgress, barH, 4);
+            ctx.fill();
+
+            // Text
+            ctx.fillStyle = '#FF4444';
+            ctx.font = 'bold 32px "Outfit", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#FF0000';
+            ctx.fillText(`FEVER!`, 0, 0);
+
+            ctx.fillStyle = '#FFF';
+            ctx.font = 'bold 20px "Outfit", sans-serif';
+            ctx.fillText(`${secondsLeft}s`, 0, 25);
+
+            ctx.restore();
+        }
     }
 
     setCharacter(character) {

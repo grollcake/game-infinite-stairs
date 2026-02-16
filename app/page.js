@@ -73,6 +73,26 @@ export default function Home() {
         {muted ? '🔇' : '🔊'}
       </button>
 
+      {/* Version Tag */}
+      {screen !== 'playing' && (
+        <div style={{
+          position: 'fixed',
+          top: '10px',
+          left: '10px',
+          zIndex: 200,
+          fontSize: '10px',
+          color: 'rgba(255, 255, 255, 0.25)',
+          fontFamily: '"Outfit", sans-serif',
+          padding: '4px 8px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          borderRadius: '4px',
+          backdropFilter: 'blur(4px)',
+          userSelect: 'none'
+        }}>
+          v0.1.0
+        </div>
+      )}
+
       {/* Main Menu Screen */}
       <div className={`screen main-menu ${screen === 'menu' ? 'visible' : 'hidden'}`}>
         <div className="game-logo fade-in-up fade-in-up-1">

@@ -66,6 +66,11 @@ export class SoundManager {
     }, 400);
   }
 
+  playItemPickup() {
+    this.playTone(800, 0.1, 'sine', 0.2);
+    setTimeout(() => this.playTone(1200, 0.15, 'sine', 0.15), 50);
+  }
+
   playUnlock() {
     const notes = [440, 554, 659, 880, 1047];
     notes.forEach((freq, i) => {
