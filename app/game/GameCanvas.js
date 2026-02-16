@@ -1,20 +1,28 @@
 'use client';
 
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback, useState, forwardRef, useImperativeHandle } from 'react';
 import { GameEngine } from './GameEngine';
 import { CHARACTERS } from './Characters';
 
-export default function GameCanvas({
+const GameCanvas = forwardRef(({
     character,
     onGameOver,
     gameState,
     onGameStart
-}) {
+}, ref) => {
     const canvasRef = useRef(null);
     const engineRef = useRef(null);
     const animFrameRef = useRef(null);
     const [canvasSize, setCanvasSize] = useState({ width: 400, height: 700 });
     const [autoDir, setAutoDir] = useState(false);
+
+    useImperativeHandle(ref, () => ({
+        revive: () => {
+            if (engineRef.current) {
+                engineRef.current.revive();
+            }
+        }
+    }));
 
     // Calculate canvas size for both portrait and landscape
     useEffect(() => {
@@ -150,7 +158,7 @@ export default function GameCanvas({
                         transition: 'color 0.2s ease'
                     }}
                 >
-                    v0.1.0
+                    v0.2.0
                 </div>
             )}
 
@@ -195,4 +203,6 @@ export default function GameCanvas({
             )}
         </div>
     );
-}
+});
+
+export default GameCanvas;

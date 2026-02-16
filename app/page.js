@@ -14,10 +14,17 @@ export default function Home() {
   const [newUnlocks, setNewUnlocks] = useState([]);
   const [muted, setMuted] = useState(false);
   const [gameKey, setGameKey] = useState(0);
+  const [totalCoins, setTotalCoins] = useState(0);
+  const [earnedCoins, setEarnedCoins] = useState(0);
+  const [canRevive, setCanRevive] = useState(true);
+
+  const gameCanvasRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('infiniteStairs_highScore');
     if (saved) setHighScore(parseInt(saved));
+    const savedCoins = localStorage.getItem('infiniteStairs_totalCoins');
+    if (savedCoins) setTotalCoins(parseInt(savedCoins));
     const savedChar = localStorage.getItem('infiniteStairs_selectedChar');
     if (savedChar) {
       const found = CHARACTERS.find(c => c.id === savedChar);
@@ -30,15 +37,29 @@ export default function Home() {
     soundManager.playStartGame();
     setGameKey(prev => prev + 1);
     setScreen('playing');
+    setCanRevive(true);
   }, []);
 
-  const handleGameOver = useCallback((score, newHigh, unlocks) => {
+  const handleGameOver = useCallback((score, newHigh, unlocks, earned, total) => {
     setLastScore(score);
     setHighScore(newHigh);
     setIsNewRecord(score >= newHigh && score > 0);
     setNewUnlocks(unlocks || []);
+    setEarnedCoins(earned);
+    setTotalCoins(total);
     setScreen('result');
   }, []);
+
+  const handleRevive = useCallback(() => {
+    if (totalCoins >= 50 && gameCanvasRef.current) {
+      const newTotal = totalCoins - 50;
+      setTotalCoins(newTotal);
+      localStorage.setItem('infiniteStairs_totalCoins', newTotal.toString());
+      setCanRevive(false);
+      gameCanvasRef.current.revive();
+      setScreen('playing');
+    }
+  }, [totalCoins]);
 
   const handleCharSelect = useCallback(() => {
     setScreen('charSelect');
@@ -89,7 +110,7 @@ export default function Home() {
           backdropFilter: 'blur(4px)',
           userSelect: 'none'
         }}>
-          v0.1.0
+          v0.2.0
         </div>
       )}
 
@@ -110,11 +131,16 @@ export default function Home() {
 
         <CharacterPreview character={selectedChar} />
 
-        {highScore > 0 && (
-          <div className="high-score-badge fade-in-up fade-in-up-3">
-            👑 최고 기록: {highScore}층
+        <div className="menu-stats fade-in-up fade-in-up-3">
+          {highScore > 0 && (
+            <div className="high-score-badge">
+              👑 최고 기록: {highScore}층
+            </div>
+          )}
+          <div className="coin-badge">
+            💰 보유 코인: {totalCoins}개
           </div>
-        )}
+        </div>
 
         <div className="menu-buttons fade-in-up fade-in-up-4">
           <button className="btn-play" onClick={handleStartGame} id="btn-start">
@@ -127,9 +153,11 @@ export default function Home() {
       </div>
 
       {/* Game Screen */}
-      <div className={`screen game-screen ${screen === 'playing' ? 'visible' : 'hidden'}`}>
-        {screen === 'playing' && (
+      <div className={`screen game-screen ${(screen === 'playing' || screen === 'result') ? 'visible' : 'hidden'}`}
+        style={{ pointerEvents: screen === 'playing' ? 'auto' : 'none' }}>
+        {(screen === 'playing' || screen === 'result') && (
           <GameCanvas
+            ref={gameCanvasRef}
             key={gameKey}
             character={selectedChar}
             onGameOver={handleGameOver}
@@ -150,6 +178,12 @@ export default function Home() {
           <div className="result-highscore">
             👑 최고 기록: {highScore}층
           </div>
+          <div style={{ marginTop: '10px', color: '#FFD700', fontWeight: 'bold' }}>
+            💰 획득 코인: +{earnedCoins}
+          </div>
+          <div style={{ fontSize: '12px', opacity: 0.7 }}>
+            보유 코인: {totalCoins}
+          </div>
         </div>
 
         {isNewRecord && (
@@ -168,6 +202,11 @@ export default function Home() {
         )}
 
         <div className="result-buttons fade-in-up fade-in-up-4">
+          {canRevive && totalCoins >= 50 && (
+            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px' }}>
+              💎 50코인으로 부활
+            </button>
+          )}
           <button className="btn-play" onClick={handleStartGame} id="btn-retry">
             🔄 다시 도전
           </button>

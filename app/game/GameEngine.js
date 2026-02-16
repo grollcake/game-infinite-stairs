@@ -12,6 +12,7 @@ export class GameEngine {
         this.state = 'ready'; // ready, playing, falling, gameover
         this.score = 0;
         this.highScore = parseInt(localStorage.getItem('infiniteStairs_highScore') || '0');
+        this.totalCoins = parseInt(localStorage.getItem('infiniteStairs_totalCoins') || '0');
         this.character = character || CHARACTERS[0];
         this.frame = 0;
         this.gameOverCallback = null;
@@ -317,6 +318,11 @@ export class GameEngine {
         this.combo++;
         this.comboTimer = 60;
 
+        // Combo reward every 10
+        if (this.combo > 0 && this.combo % 10 === 0) {
+            this.spawnComboReward();
+        }
+
         // Sound
         soundManager.playStep(this.score);
 
@@ -381,6 +387,32 @@ export class GameEngine {
             case 'rocket':
                 this.startRocket();
                 break;
+        }
+    }
+
+    spawnComboReward() {
+        // Find the top-most visible stair (or just slightly above the screen)
+        const visibleTop = this.cameraY;
+
+        // Find indices of stairs that are currently in or slightly above the view
+        // Let's pick a stair that is about 15-20 steps ahead of the current position to be sure it's "top-ish"
+        const targetIndex = Math.min(this.stairs.length - 1, this.currentStairIndex + 25);
+        const targetStair = this.stairs[targetIndex];
+
+        if (targetStair && !targetStair.item) {
+            // Pick a random item from available types
+            const randomType = this.itemTypes[Math.floor(Math.random() * this.itemTypes.length)];
+            targetStair.item = { ...randomType };
+
+            // Visual text effect
+            this.addFloatingText(`🔥 ${this.combo} COMBO!!`, this.playerX, this.playerY - 60, '#FFD700', 1.5);
+            setTimeout(() => {
+                this.addFloatingText('✨ NEW ITEM SPAWNED!!', this.playerX, this.playerY - 40, '#FFFFFF', 1.1);
+            }, 300);
+
+            // Camera shake or sound enhancement
+            this.screenShake = 5;
+            soundManager.playMilestone(); // Using milestone sound for feedback
         }
     }
 
@@ -462,11 +494,39 @@ export class GameEngine {
 
         localStorage.setItem('infiniteStairs_prevHighScore', this.highScore.toString());
 
+        // Update total coins
+        const earnedCoins = this.score;
+        this.totalCoins += earnedCoins;
+        localStorage.setItem('infiniteStairs_totalCoins', this.totalCoins.toString());
+
         setTimeout(() => {
             if (this.gameOverCallback) {
-                this.gameOverCallback(this.score, this.highScore, newUnlocks);
+                this.gameOverCallback(this.score, this.highScore, newUnlocks, earnedCoins, this.totalCoins);
             }
         }, 1200);
+    }
+
+    revive() {
+        this.state = 'playing';
+        this.energy = this.maxEnergy;
+        this.isMoving = false;
+        this.isShielding = false;
+        this.isRocketing = false;
+        this.feverTimer = 0;
+
+        // Position on current stair
+        this.positionPlayerOnStair(this.currentStairIndex);
+
+        // Face the correct way
+        const currentStair = this.stairs[this.currentStairIndex];
+        const nextStair = this.stairs[this.currentStairIndex + 1];
+        if (nextStair) {
+            const dx = nextStair.x - currentStair.x;
+            this.playerDirection = dx > 0 ? 1 : -1;
+        }
+
+        this.addFloatingText('REVIVED!', this.playerX, this.playerY - 40, '#FFD700', 1.5);
+        soundManager.playStartGame();
     }
 
     addStepParticles(x, y, count = 6) {
@@ -625,7 +685,6 @@ export class GameEngine {
                 this.isShielding = false;
                 this.playerX = this.targetX;
                 this.playerY = this.targetY;
-                this.playerDirection *= -1; // Face the correct way now
             } else {
                 const t = this.shieldAnimProgress;
                 if (t < 0.4) {
