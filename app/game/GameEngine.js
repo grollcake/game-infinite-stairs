@@ -199,8 +199,8 @@ export class GameEngine {
                 item: null
             };
 
-            // Spawn item
-            if (this.itemSpawnCooldown <= 0 && Math.random() < 0.1) {
+            // Spawn item (only if not rocketing or in fever)
+            if (this.itemSpawnCooldown <= 0 && !this.isRocketing && this.feverTimer <= 0 && Math.random() < 0.1) {
                 const rand = Math.random();
                 let cumulative = 0;
                 const totalChance = this.itemTypes.reduce((sum, t) => sum + t.chance, 0);
@@ -223,8 +223,9 @@ export class GameEngine {
         }
     }
 
-    handleStep() {
+    handleStep(isInternal = false) {
         if (this.state !== 'playing') return;
+        if (this.isRocketing && !isInternal) return;
 
         // Build speed momentum from input interval
         const now = performance.now();
@@ -302,8 +303,8 @@ export class GameEngine {
 
         nextStair.visited = true;
 
-        // Item Pickup
-        if (nextStair.item) {
+        // Item Pickup (disabled during rocket or fever)
+        if (nextStair.item && !this.isRocketing && this.feverTimer <= 0) {
             this.handleItemPickup(nextStair.item);
             nextStair.item = null;
         }
@@ -399,7 +400,7 @@ export class GameEngine {
         const targetIndex = Math.min(this.stairs.length - 1, this.currentStairIndex + 25);
         const targetStair = this.stairs[targetIndex];
 
-        if (targetStair && !targetStair.item) {
+        if (targetStair && !targetStair.item && !this.isRocketing && this.feverTimer <= 0) {
             // Pick a random item from available types
             const randomType = this.itemTypes[Math.floor(Math.random() * this.itemTypes.length)];
             targetStair.item = { ...randomType };
@@ -423,7 +424,7 @@ export class GameEngine {
     }
 
     handleDirectionChange() {
-        if (this.state !== 'playing') return;
+        if (this.state !== 'playing' || this.isRocketing) return;
 
         // If currently moving, queue the direction change
         if (this.isMoving) {
@@ -642,7 +643,7 @@ export class GameEngine {
         // Rocket handling
         if (this.isRocketing) {
             if (this.frame % 3 === 0) {
-                this.handleStep();
+                this.handleStep(true);
                 this.rocketStepsRemaining--;
                 if (this.rocketStepsRemaining <= 0) {
                     this.isRocketing = false;

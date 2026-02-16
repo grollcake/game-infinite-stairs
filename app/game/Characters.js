@@ -68,6 +68,108 @@ export const CHARACTERS = [
             accent: '#B0B0C0',
         }
     },
+    {
+        id: 'viking',
+        name: '바이킹',
+        description: '700점 달성 시 해금',
+        unlockScore: 700,
+        colors: {
+            body: '#8B4513',
+            bodyDark: '#5D2E0C',
+            head: '#FFD5A0',
+            headOutline: '#E0B080',
+            eye: '#333333',
+            eyeWhite: '#FFFFFF',
+            feet: '#2D2D2D',
+            hat: '#C0C0C0',
+            accent: '#D2B48C',
+        }
+    },
+    {
+        id: 'chef',
+        name: '요리사',
+        description: '1000점 달성 시 해금',
+        unlockScore: 1000,
+        colors: {
+            body: '#EBEDEF',
+            bodyDark: '#D0D3D4',
+            head: '#FFD5A0',
+            headOutline: '#E0B080',
+            eye: '#333333',
+            eyeWhite: '#FFFFFF',
+            feet: '#333333',
+            hat: '#FFFFFF',
+            accent: '#FF4444',
+        }
+    },
+    {
+        id: 'alien',
+        name: '외계인',
+        description: '1500점 달성 시 해금',
+        unlockScore: 1500,
+        colors: {
+            body: '#2ECC71',
+            bodyDark: '#27AE60',
+            head: '#2ECC71',
+            headOutline: '#27AE60',
+            eye: '#000000',
+            eyeWhite: '#000000',
+            feet: '#27AE60',
+            hat: null,
+            accent: '#A9DFBF',
+        }
+    },
+    {
+        id: 'vampire',
+        name: '흡혈귀',
+        description: '2000점 달성 시 해금',
+        unlockScore: 2000,
+        colors: {
+            body: '#1A1A1A',
+            bodyDark: '#000000',
+            head: '#F0F0F0',
+            headOutline: '#CCCCCC',
+            eye: '#FF0000',
+            eyeWhite: '#FFFFFF',
+            feet: '#000000',
+            hat: '#8E44AD',
+            accent: '#333333',
+        }
+    },
+    {
+        id: 'hero',
+        name: '영웅',
+        description: '3000점 달성 시 해금',
+        unlockScore: 3000,
+        colors: {
+            body: '#3498DB',
+            bodyDark: '#2980B9',
+            head: '#FFD5A0',
+            headOutline: '#E0B080',
+            eye: '#333333',
+            eyeWhite: '#FFFFFF',
+            feet: '#E74C3C',
+            hat: null,
+            accent: '#F1C40F',
+        }
+    },
+    {
+        id: 'king',
+        name: '임금님',
+        description: '5000점 달성 시 해금',
+        unlockScore: 500,
+        colors: {
+            body: '#9B59B6',
+            bodyDark: '#8E44AD',
+            head: '#FFD5A0',
+            headOutline: '#E0B080',
+            eye: '#333333',
+            eyeWhite: '#FFFFFF',
+            feet: '#333333',
+            hat: '#F1C40F',
+            accent: '#8E44AD',
+        }
+    },
 ];
 
 export function drawCharacter(ctx, x, y, character, direction, frame, scale = 1) {
@@ -176,7 +278,75 @@ export function drawCharacter(ctx, x, y, character, direction, frame, scale = 1)
                 ctx.arc(0, -31 * s, 2 * s, 0, Math.PI * 2);
                 ctx.fill();
             }
+        } else if (character.id === 'viking') {
+            // Helmet with horns
+            ctx.fillStyle = c.hat;
+            ctx.beginPath();
+            ctx.arc(0, -17 * s, 9 * s, Math.PI, 0);
+            ctx.fill();
+            // Horns
+            ctx.fillStyle = '#FFFFFF';
+            // Left horn
+            ctx.beginPath();
+            ctx.moveTo(-7 * s, -18 * s);
+            ctx.quadraticCurveTo(-15 * s, -25 * s, -12 * s, -30 * s);
+            ctx.quadraticCurveTo(-10 * s, -22 * s, -4 * s, -18 * s);
+            ctx.fill();
+            // Right horn
+            ctx.beginPath();
+            ctx.moveTo(7 * s, -18 * s);
+            ctx.quadraticCurveTo(15 * s, -25 * s, 12 * s, -30 * s);
+            ctx.quadraticCurveTo(10 * s, -22 * s, 4 * s, -18 * s);
+            ctx.fill();
+        } else if (character.id === 'chef') {
+            // High chef hat
+            ctx.fillStyle = c.hat;
+            ctx.beginPath();
+            ctx.roundRect(-8 * s, -35 * s, 16 * s, 15 * s, { tl: 5, tr: 5, bl: 2, br: 2 });
+            ctx.fill();
+            ctx.strokeStyle = '#CCCCCC';
+            ctx.lineWidth = 1 * s;
+            ctx.stroke();
+            // Hat band
+            ctx.fillStyle = '#CCCCCC';
+            ctx.fillRect(-8 * s, -22 * s, 16 * s, 3 * s);
+        } else if (character.id === 'king') {
+            // Royal crown
+            ctx.fillStyle = c.hat;
+            ctx.beginPath();
+            ctx.moveTo(-8 * s, -22 * s);
+            ctx.lineTo(-10 * s, -32 * s);
+            ctx.lineTo(-4 * s, -25 * s);
+            ctx.lineTo(0 * s, -35 * s);
+            ctx.lineTo(4 * s, -25 * s);
+            ctx.lineTo(10 * s, -32 * s);
+            ctx.lineTo(8 * s, -22 * s);
+            ctx.closePath();
+            ctx.fill();
+            // Jewels
+            ctx.fillStyle = '#E74C3C';
+            ctx.beginPath();
+            ctx.arc(0, -28 * s, 1.5 * s, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#3498DB';
+            ctx.beginPath();
+            ctx.arc(-5 * s, -24 * s, 1.2 * s, 0, Math.PI * 2);
+            ctx.arc(5 * s, -24 * s, 1.2 * s, 0, Math.PI * 2);
+            ctx.fill();
         }
+    }
+
+    // Vampire / Hero Cape
+    if (character.id === 'vampire' || character.id === 'hero') {
+        ctx.fillStyle = character.id === 'vampire' ? '#660000' : '#E74C3C';
+        const capeSwing = Math.sin(frame * 0.2) * 5 * s;
+        ctx.beginPath();
+        const capeX = direction > 0 ? -6 * s : 6 * s;
+        ctx.moveTo(capeX, -5 * s);
+        ctx.quadraticCurveTo(direction > 0 ? -20 * s + capeSwing : 20 * s - capeSwing, 0, capeX - (direction * 5 * s), 20 * s + capeSwing);
+        ctx.lineTo(capeX + (direction * 10 * s), 20 * s);
+        ctx.quadraticCurveTo(direction > 0 ? -5 * s : 5 * s, 10 * s, capeX, -5 * s);
+        ctx.fill();
     }
 
     // Eyes
@@ -184,27 +354,34 @@ export function drawCharacter(ctx, x, y, character, direction, frame, scale = 1)
     // Eye whites
     ctx.fillStyle = c.eyeWhite;
     ctx.beginPath();
-    ctx.ellipse(-3 * s + eyeOffsetX, -15 * s, 3 * s, 3.5 * s, 0, 0, Math.PI * 2);
+    const eyeSizeW = character.id === 'alien' ? 4.5 * s : 3 * s;
+    const eyeSizeH = character.id === 'alien' ? 6 * s : 3.5 * s;
+    const eyeRot = character.id === 'alien' ? (direction * 0.2) : 0;
+
+    ctx.ellipse(-3 * s + eyeOffsetX, -15 * s, eyeSizeW, eyeSizeH, eyeRot, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.ellipse(4 * s + eyeOffsetX, -15 * s, 3 * s, 3.5 * s, 0, 0, Math.PI * 2);
+    ctx.ellipse(4 * s + eyeOffsetX, -15 * s, eyeSizeW, eyeSizeH, -eyeRot, 0, Math.PI * 2);
     ctx.fill();
     // Pupils
     ctx.fillStyle = c.eye;
     ctx.beginPath();
-    ctx.arc(-2 * s + eyeOffsetX, -15 * s, 2 * s, 0, Math.PI * 2);
+    const pupilSize = character.id === 'alien' ? 0.5 * s : 2 * s;
+    ctx.arc(-2 * s + eyeOffsetX, -15 * s, pupilSize, 0, Math.PI * 2);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(5 * s + eyeOffsetX, -15 * s, 2 * s, 0, Math.PI * 2);
+    ctx.arc(5 * s + eyeOffsetX, -15 * s, pupilSize, 0, Math.PI * 2);
     ctx.fill();
     // Eye shine
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(-1 * s + eyeOffsetX, -16 * s, 0.8 * s, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(6 * s + eyeOffsetX, -16 * s, 0.8 * s, 0, Math.PI * 2);
-    ctx.fill();
+    if (character.id !== 'alien') {
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(-1 * s + eyeOffsetX, -16 * s, 0.8 * s, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(6 * s + eyeOffsetX, -16 * s, 0.8 * s, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     // Mouth - cute smile
     ctx.strokeStyle = '#CC8866';
