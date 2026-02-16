@@ -56,8 +56,12 @@ const GameCanvas = forwardRef(({
         if (!canvas || !engine) return;
         canvas.width = canvasSize.width;
         canvas.height = canvasSize.height;
-        engine.width = canvasSize.width;
-        engine.height = canvasSize.height;
+        if (engine.resize) {
+            engine.resize(canvasSize.width, canvasSize.height);
+        } else {
+            engine.width = canvasSize.width;
+            engine.height = canvasSize.height;
+        }
     }, [canvasSize]);
 
     // Create engine once and start game immediately

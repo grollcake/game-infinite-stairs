@@ -118,11 +118,11 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'ocean',
-            stairType: 'wood_plank',
-            bg: { h: 25, s: 40, l: 15 },
-            stair: '#8B5E3C',
-            stairNext: '#A67C52',
-            stairVisited: '#CD853F',
+            stairType: 'transparent_with_flag',
+            bg: { h: 200, s: 60, l: 20 }, // 짙은 바다색
+            stair: 'rgba(0,0,0,0)', // 투명
+            stairNext: 'rgba(0,0,0,0)', // 투명
+            stairVisited: 'rgba(255,255,255,0.2)', // 지나온 길은 살짝 보이게 (선택사항, 하지만 UX상 필요해 보임. 일단 투명으로)
         }
     },
     {

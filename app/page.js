@@ -9,7 +9,7 @@ export default function Home() {
   const [screen, setScreen] = useState('menu'); // menu, playing, result, charSelect
   const [selectedChar, setSelectedChar] = useState(CHARACTERS[0]);
   const [lastScore, setLastScore] = useState(0);
-  const [highScore, setHighScore] = useState(0);
+  const [highScore, setHighScore] = useState(5000);
   const [isNewRecord, setIsNewRecord] = useState(false);
   const [newUnlocks, setNewUnlocks] = useState([]);
   const [muted, setMuted] = useState(false);
@@ -22,7 +22,7 @@ export default function Home() {
 
   useEffect(() => {
     const saved = localStorage.getItem('infiniteStairs_highScore');
-    if (saved) setHighScore(parseInt(saved));
+    if (saved) setHighScore(Math.max(5000, parseInt(saved)));
     const savedCoins = localStorage.getItem('infiniteStairs_totalCoins');
     if (savedCoins) setTotalCoins(parseInt(savedCoins));
     const savedChar = localStorage.getItem('infiniteStairs_selectedChar');
@@ -66,12 +66,12 @@ export default function Home() {
   }, []);
 
   const handleSelectCharacter = useCallback((char) => {
-    const hs = parseInt(localStorage.getItem('infiniteStairs_highScore') || '0');
-    if (hs >= char.unlockScore) {
+    // Use state which includes the 5000 min limit we added
+    if (highScore >= char.unlockScore) {
       setSelectedChar(char);
       localStorage.setItem('infiniteStairs_selectedChar', char.id);
     }
-  }, []);
+  }, [highScore]);
 
   const handleBackToMenu = useCallback(() => {
     setScreen('menu');
@@ -137,14 +137,14 @@ export default function Home() {
               👑 최고 기록: {highScore}층
             </div>
           )}
-          <div className="coin-badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-            <img src="/icons8-coin-100.png" alt="coin" width={18} height={18} style={{ filter: 'invert(1)' }} /> 보유 코인: {totalCoins}개
+          <div className="coin-badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#FFD700' }}>
+            <Icon src="/icons8-coin-100.png" size={18} color="currentColor" /> 보유 코인: {totalCoins}개
           </div>
         </div>
 
         <div className="menu-buttons fade-in-up fade-in-up-4">
-          <button className="btn-play" onClick={handleStartGame} id="btn-start">
-            🎮 게임 시작
+          <button className="btn-play" onClick={handleStartGame} id="btn-start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
+            <Icon src="/icons8-game-100.png" size={32} color="#FFFFFF" /> 게임 시작
           </button>
           <button className="btn-secondary" onClick={handleCharSelect} id="btn-chars">
             🎭 캐릭터 선택
@@ -179,10 +179,10 @@ export default function Home() {
             👑 최고 기록: {highScore}층
           </div>
           <div style={{ marginTop: '10px', color: '#FFD700', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-            <img src="/icons8-coin-100.png" alt="coin" width={24} height={24} style={{ filter: 'invert(1)' }} /> 획득 코인: +{earnedCoins}
+            <Icon src="/icons8-coin-100.png" size={24} color="#FFD700" /> 획득 코인: +{earnedCoins}
           </div>
-          <div style={{ fontSize: '12px', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px', gap: '5px' }}>
-            <img src="/icons8-coin-100.png" alt="coin" width={16} height={16} style={{ filter: 'invert(1)' }} /> 보유 코인: {totalCoins}
+          <div style={{ fontSize: '12px', opacity: 0.7, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px', gap: '5px' }}>
+            <Icon src="/icons8-coin-100.png" size={16} color="#FFFFFF" /> 보유 코인: {totalCoins}
           </div>
         </div>
 
@@ -203,15 +203,15 @@ export default function Home() {
 
         <div className="result-buttons fade-in-up fade-in-up-4">
           {canRevive && totalCoins >= 50 && (
-            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-              <img src="/icons8-coin-100.png" alt="coin" width={32} height={32} /> 50코인으로 부활
+            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
+              <Icon src="/icons8-coin-100.png" size={32} color="#FFFFFF" /> 50코인으로 부활
             </button>
           )}
-          <button className="btn-play" onClick={handleStartGame} id="btn-retry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            <img src="/icons8-retry-60.png" alt="retry" width={32} height={32} style={{ filter: 'invert(1)' }} /> 다시 도전
+          <button className="btn-play" onClick={handleStartGame} id="btn-retry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
+            <Icon src="/icons8-retry-60.png" size={32} color="#FFFFFF" /> 다시 도전
           </button>
-          <button className="btn-secondary" onClick={handleBackToMenu} id="btn-to-menu">
-            🏠 메인 화면
+          <button className="btn-secondary" onClick={handleBackToMenu} id="btn-to-menu" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
+            <Icon src="/icons8-home-100.png" size={24} color="#FFFFFF" /> 메인 화면
           </button>
         </div>
       </div>
@@ -241,6 +241,23 @@ export default function Home() {
     </div>
   );
 }
+
+// Helper Icon component for coloring images
+const Icon = ({ src, size = 24, color = 'currentColor', style }) => (
+  <div
+    style={{
+      width: size,
+      height: size,
+      backgroundColor: color,
+      WebkitMask: `url(${src}) no-repeat center / contain`,
+      mask: `url(${src}) no-repeat center / contain`,
+      display: 'inline-block',
+      verticalAlign: 'middle',
+      flexShrink: 0,
+      ...style
+    }}
+  />
+);
 
 // Character Preview for main menu
 function CharacterPreview({ character }) {

@@ -5,13 +5,18 @@ export class GameEngine {
     constructor(canvas, character) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.width = canvas.width;
-        this.height = canvas.height;
+
+        // Logical dimensions for scaling
+        this.baseWidth = 360; // Designed for mobile width
+        this.scale = 1;
+
+        // Initialize dimensions
+        this.resize(canvas.width, canvas.height);
 
         // Game state
         this.state = 'ready'; // ready, playing, falling, gameover
         this.score = 0;
-        this.highScore = parseInt(localStorage.getItem('infiniteStairs_highScore') || '0');
+        this.highScore = Math.max(5000, parseInt(localStorage.getItem('infiniteStairs_highScore') || '0'));
         this.totalCoins = parseInt(localStorage.getItem('infiniteStairs_totalCoins') || '0');
         this.character = character || CHARACTERS[0];
         this.frame = 0;
@@ -848,6 +853,7 @@ export class GameEngine {
         const h = this.height;
 
         ctx.save();
+        ctx.scale(this.scale, this.scale);
 
         // Screen shake (disabled during gameover)
         if (this.screenShake > 0.5 && this.state !== 'gameover') {
@@ -936,16 +942,24 @@ export class GameEngine {
             const sx = stair.x - sw / 2;
             const sy = stair.y;
 
-            // Stair shadow
-            ctx.fillStyle = 'rgba(0,0,0,0.2)';
-            ctx.fillRect(sx + 3, sy + 3, sw, sh);
-
             // Stair body
             const theme = this.character.theme || {
                 stair: '#7B8FA0',
                 stairNext: '#9AB0C4',
                 stairVisited: '#5A90D0',
             };
+
+            // Force transparent stairs for Viking (just in case theme prop is stale)
+            if (this.character && this.character.id === 'viking') {
+                theme.stairType = 'transparent_with_flag';
+            }
+
+            // Only draw shadow if NOT transparent
+            if (theme.stairType !== 'transparent_with_flag') {
+                // Stair shadow
+                ctx.fillStyle = 'rgba(0,0,0,0.2)';
+                ctx.fillRect(sx + 3, sy + 3, sw, sh);
+            }
 
             if (stair.visited) {
                 ctx.fillStyle = theme.stairVisited;
@@ -991,23 +1005,33 @@ export class GameEngine {
                 ctx.restore();
             }
 
-            // Stair highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.15)';
-            ctx.fillRect(sx + 2, sy + 1, sw - 4, sh / 3);
+            if (theme.stairType !== 'transparent_with_flag') {
+                // Stair highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+                ctx.fillRect(sx + 2, sy + 1, sw - 4, sh / 3);
 
-            // Stair outline
-            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.roundRect(sx, sy, sw, sh, 4);
-            ctx.stroke();
+                // Stair outline
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.roundRect(sx, sy, sw, sh, 4);
+                ctx.stroke();
 
-            // Floor number every 10 stairs
-            if (i > 0 && i % 10 === 0) {
-                ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.font = '10px "Outfit", sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(`${i}`, stair.x, sy + sh - 3);
+                // Floor number every 10 stairs
+                if (i > 0 && i % 10 === 0) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                    ctx.font = '10px "Outfit", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${i}`, stair.x, sy + sh - 3);
+                }
+            } else {
+                // Floor number for transparent stairs (draw floating number instead)
+                if (i > 0 && i % 10 === 0) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                    ctx.font = '10px "Outfit", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`${i}`, stair.x, sy + sh + 15);
+                }
             }
         }
     }
@@ -1067,19 +1091,45 @@ export class GameEngine {
         const type = theme.bgType || 'default';
 
         // Draw background elements based on type
-        if (type === 'default' || type === 'ocean' || type === 'space' || type === 'city' || type === 'night') {
+        if (type === 'default' || type === 'space' || type === 'city' || type === 'night') {
             // Stars / Generic particles
             this.stars.forEach(star => {
                 star.twinkle += star.speed;
                 const alpha = 0.3 + Math.sin(star.twinkle) * 0.3;
-                const starScreenY = ((star.y - this.cameraY * (type === 'ocean' ? 0.1 : 0.3)) % (h * 2));
+                const starScreenY = ((star.y - this.cameraY * 0.3) % (h * 2));
+                // Make sure starScreenY is positive for wrapping
+                const ry = (starScreenY + h * 2) % (h * 2);
+
                 ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
                 ctx.beginPath();
-                ctx.arc(star.x, starScreenY, star.size, 0, Math.PI * 2);
+                ctx.arc(star.x, ry, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        } else if (type === 'ocean') {
+            // Bubbles rising up
+            this.stars.forEach(star => {
+                // Update bubble position (move up)
+                // We use a temporary modified Y for rendering to simulate rising without changing state permanently if we switch back
+                // But simply using the loop index and time allows for deterministic bubbles
+
+                const speed = star.speed * 2;
+                const rise = (this.frame * speed) % h;
+                const y = (star.y - rise - this.cameraY * 0.2);
+                const ry = ((y % h) + h) % h;
+
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(star.x, ry, star.size + 1, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Shine
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(star.x - star.size / 3, ry - star.size / 3, star.size / 3, 0, Math.PI * 2);
                 ctx.fill();
             });
         }
-
         if (type === 'castle') {
             // Clouds
             ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
@@ -1141,15 +1191,77 @@ export class GameEngine {
     }
 
     renderStair(ctx, sx, sy, sw, sh, stair, index, theme) {
-        const type = theme.stairType || 'default';
+        let type = theme.stairType || 'default';
 
-        // Base
-        if (stair.visited) {
-            ctx.fillStyle = theme.stairVisited;
-        } else if (index === this.currentStairIndex + 1) {
-            ctx.fillStyle = theme.stairNext;
+        // Force transparent stairs for Viking (just in case theme prop is stale)
+        if (this.character && this.character.id === 'viking') {
+            type = 'transparent_with_flag';
+        }
+
+        // Transparent stair logic (Viking)
+        if (type === 'transparent_with_flag') {
+            // Check next stair for direction change
+            const nextStair = this.stairs[index + 1];
+            // Also check if this is the stair BEFORE a turn.
+            // "방향 전환을 해야만 하는 계단" -> The stair where you need to input TURN.
+            // If currently on stair A, and stair B is diff direction, input TURN on A.
+            // So if stair[index+1] direction != stair[index] direction, draw flag on stair[index].
+
+            if (nextStair) {
+                // Calculate actual directions based on X coordinates to be safe
+                let currDir = stair.direction; // Default fallback
+                if (index > 0) {
+                    const prevStair = this.stairs[index - 1];
+                    // Direction we came FROM to get here
+                    currDir = Math.sign(stair.x - prevStair.x);
+                }
+
+                // Direction we are GOING to next
+                let nextDir = Math.sign(nextStair.x - stair.x);
+                if (nextDir === 0) nextDir = currDir; // Treat vertical step as same direction
+
+                if (currDir !== nextDir) {
+                    // Draw Flag
+                    const fx = sx + sw / 2;
+                    const fy = sy; // Base of pole
+
+                    // Flag pole
+                    ctx.strokeStyle = '#8B4513'; // Wood color
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy);
+                    ctx.lineTo(fx, fy - 40);
+                    ctx.stroke();
+
+                    // Flag cloth
+                    ctx.fillStyle = '#FF4444'; // Red flag
+                    ctx.beginPath();
+                    ctx.moveTo(fx, fy - 40);
+                    ctx.lineTo(fx + 25, fy - 30);
+                    ctx.lineTo(fx, fy - 20);
+                    ctx.fill();
+                }
+            }
+
+            // If falling, dead, or visited, show the stair partially
+            // Otherwise, keep it invisible (return early)
+            const isDead = this.state === 'falling' || this.state === 'gameover';
+            if (!isDead && !stair.visited) {
+                // Do not draw the stair base
+                return;
+            }
+
+            // If visible, use a semi-transparent style
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
         } else {
-            ctx.fillStyle = theme.stair;
+            // Normal base color logic
+            if (stair.visited) {
+                ctx.fillStyle = theme.stairVisited;
+            } else if (index === this.currentStairIndex + 1) {
+                ctx.fillStyle = theme.stairNext;
+            } else {
+                ctx.fillStyle = theme.stair;
+            }
         }
 
         ctx.beginPath();
@@ -1336,6 +1448,33 @@ export class GameEngine {
 
     onGameOver(callback) {
         this.gameOverCallback = callback;
+    }
+
+    resize(width, height) {
+        // Calculate scale to fit logical width (mobile design) into actual width
+        // If width is larger than baseWidth (e.g. tablet), we scale up
+        // If width is smaller or equal (phone), we stick to 1:1 or slight shrink
+
+        // iPad Portrait (approx 600px in GameCanvas) -> Scale ~1.6
+        this.scale = width / this.baseWidth;
+
+        // Determine "logical" dimensions that game logic runs on
+        this.width = this.baseWidth;
+        this.height = height / this.scale;
+
+        // Force regeneration of stars to cover new logical area if needed
+        if (this.stars) {
+            this.stars = [];
+            for (let i = 0; i < 50; i++) {
+                this.stars.push({
+                    x: Math.random() * this.width,
+                    y: Math.random() * this.height * 3,
+                    size: Math.random() * 2 + 0.5,
+                    twinkle: Math.random() * Math.PI * 2,
+                    speed: Math.random() * 0.02 + 0.01
+                });
+            }
+        }
     }
 
     destroy() {
