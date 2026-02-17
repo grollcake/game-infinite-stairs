@@ -28,8 +28,8 @@ export const CHARACTERS = [
     {
         id: 'ninja',
         name: '닌자',
-        description: '재빠른 닌자',
-        unlockScore: 0,
+        description: '50점 달성 시 해금',
+        unlockScore: 50,
         colors: {
             body: '#2D2D2D',
             bodyDark: '#1A1A1A',
@@ -43,6 +43,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'dojo',
+            bgImage: '/bg-bamboo.jpg',
             stairType: 'wood',
             bg: { h: 350, s: 50, l: 10 },
             stair: '#3D3D3D',
@@ -53,8 +54,8 @@ export const CHARACTERS = [
     {
         id: 'princess',
         name: '공주',
-        description: '우아한 공주님',
-        unlockScore: 0,
+        description: '100점 달성 시 해금',
+        unlockScore: 100,
         colors: {
             body: '#FF69B4',
             bodyDark: '#E0509A',
@@ -68,8 +69,9 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'castle',
+            bgImage: '/bg-castle.jpg',
             stairType: 'marble',
-            bg: { h: 325, s: 60, l: 85 }, // Much lighter pink
+            bg: { h: 325, s: 60, l: 85 },
             stair: '#FFC0CB',
             stairNext: '#FFE4E1',
             stairVisited: '#FF69B4',
@@ -78,8 +80,8 @@ export const CHARACTERS = [
     {
         id: 'robot',
         name: '로봇',
-        description: '최첨단 로봇',
-        unlockScore: 0,
+        description: '150점 달성 시 해금',
+        unlockScore: 150,
         colors: {
             body: '#A0A0B0',
             bodyDark: '#808090',
@@ -104,8 +106,8 @@ export const CHARACTERS = [
     {
         id: 'viking',
         name: '바이킹',
-        description: '용맹한 바이킹',
-        unlockScore: 0,
+        description: '200점 달성 시 해금',
+        unlockScore: 200,
         colors: {
             body: '#8B4513',
             bodyDark: '#5D2E0C',
@@ -119,18 +121,19 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'ocean',
+            bgImage: '/bg-viking.jpg',
             stairType: 'transparent_with_flag',
-            bg: { h: 200, s: 60, l: 20 }, // 짙은 바다색
-            stair: 'rgba(0,0,0,0)', // 투명
-            stairNext: 'rgba(0,0,0,0)', // 투명
-            stairVisited: 'rgba(255,255,255,0.2)', // 지나온 길은 살짝 보이게 (선택사항, 하지만 UX상 필요해 보임. 일단 투명으로)
+            bg: { h: 200, s: 60, l: 20 },
+            stair: 'rgba(0,0,0,0)',
+            stairNext: 'rgba(0,0,0,0)',
+            stairVisited: 'rgba(255,255,255,0.2)',
         }
     },
     {
         id: 'chef',
         name: '요리사',
-        description: '최고의 요리사',
-        unlockScore: 0,
+        description: '250점 달성 시 해금',
+        unlockScore: 250,
         colors: {
             body: '#EBEDEF',
             bodyDark: '#D0D3D4',
@@ -144,6 +147,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'kitchen',
+            bgImage: '/bg-cooking.png',
             stairType: 'checkered',
             bg: { h: 40, s: 20, l: 90 }, // Light cream
             stair: '#E2E8F0',
@@ -154,8 +158,8 @@ export const CHARACTERS = [
     {
         id: 'alien',
         name: '외계인',
-        description: '신비한 외계인',
-        unlockScore: 0,
+        description: '300점 달성 시 해금',
+        unlockScore: 300,
         colors: {
             body: '#2ECC71',
             bodyDark: '#27AE60',
@@ -180,8 +184,8 @@ export const CHARACTERS = [
     {
         id: 'vampire',
         name: '흡혈귀',
-        description: '어둠의 흡혈귀',
-        unlockScore: 0,
+        description: '350점 달성 시 해금',
+        unlockScore: 350,
         colors: {
             body: '#1A1A1A',
             bodyDark: '#000000',
@@ -206,8 +210,8 @@ export const CHARACTERS = [
     {
         id: 'hero',
         name: '영웅',
-        description: '정의의 영웅',
-        unlockScore: 0,
+        description: '400점 달성 시 해금',
+        unlockScore: 400,
         colors: {
             body: '#3498DB',
             bodyDark: '#2980B9',
@@ -232,8 +236,8 @@ export const CHARACTERS = [
     {
         id: 'king',
         name: '임금님',
-        description: '위대한 임금님',
-        unlockScore: 0,
+        description: '450점 달성 시 해금',
+        unlockScore: 450,
         colors: {
             body: '#9B59B6',
             bodyDark: '#8E44AD',
@@ -247,6 +251,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'palace',
+            bgImage: '/bg-king.jpg',
             stairType: 'gold',
             bg: { h: 45, s: 80, l: 15 },
             stair: '#B7791F',
