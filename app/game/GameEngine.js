@@ -132,6 +132,17 @@ export class GameEngine {
         this.fireParticles = [];
         this.fireIntensity = 0;
 
+        // Environmental Effects
+        this.weatherParticles = [];
+        this.screenOverlayAlpha = 0;
+        this.cameraZoom = 1;
+        this.targetCameraZoom = 1;
+
+        // Announcement System (Fixed UI messages)
+        this.announcementText = '';
+        this.announcementTimer = 0;
+        this.announcementColor = '#FFF';
+
         // Background Image Support
         this.bgImage = null;
         if (this.character.theme && this.character.theme.bgImage) {
@@ -160,7 +171,7 @@ export class GameEngine {
             };
 
             // Spawn item (don't spawn on first few stairs or during cooldown)
-            if (i > 10 && this.itemSpawnCooldown <= 0 && Math.random() < 0.15 * (this.itemSpawnMultiplier || 1)) {
+            if (i > 10 && this.itemSpawnCooldown <= 0 && Math.random() < 0.25 * (this.itemSpawnMultiplier || 1)) {
                 const rand = Math.random();
                 let cumulative = 0;
                 for (const type of this.itemTypes) {
@@ -226,7 +237,7 @@ export class GameEngine {
             };
 
             // Spawn item (only if not rocketing or in fever)
-            if (this.itemSpawnCooldown <= 0 && !this.isRocketing && this.feverTimer <= 0 && Math.random() < 0.1 * (this.itemSpawnMultiplier || 1)) {
+            if (this.itemSpawnCooldown <= 0 && !this.isRocketing && this.feverTimer <= 0 && Math.random() < 0.2 * (this.itemSpawnMultiplier || 1)) {
                 const rand = Math.random();
                 let cumulative = 0;
                 const totalChance = this.itemTypes.reduce((sum, t) => sum + t.chance, 0);
@@ -348,9 +359,11 @@ export class GameEngine {
         // Sound
         soundManager.playStep(this.score);
 
-        // Score text
-        if (this.combo > 3) {
-            this.addFloatingText(`${this.combo} combo!`, this.playerX, this.playerY - 30, '#FFD700');
+        // Announcement updates - Only on milestones to keep it clean
+        if (this.combo > 0 && this.combo % 20 === 0) {
+            this.announcementText = `${this.combo} COMBO!`;
+            this.announcementTimer = 90;
+            this.announcementColor = '#FFD700';
         }
 
         // Step particles
@@ -360,13 +373,17 @@ export class GameEngine {
         if (this.score > 0 && this.score % 100 === 0) {
             this.milestoneFlash = 60;
             soundManager.playMilestone();
-            this.addFloatingText(`🎉 ${this.score}층 돌파!`, this.width / 2, this.height / 2, '#FFD700', 2);
+            this.announcementText = `🎉 ${this.score}층 돌파!`;
+            this.announcementTimer = 120;
+            this.announcementColor = '#FFD700';
 
             // Milestone particles explosion
+            const centerX = this.width / 2;
+            const centerY = this.cameraY + this.height / 2;
             for (let i = 0; i < 30; i++) {
                 this.particles.push({
-                    x: this.width / 2,
-                    y: this.height / 2,
+                    x: centerX,
+                    y: centerY,
                     vx: (Math.random() - 0.5) * 12,
                     vy: (Math.random() - 0.5) * 12,
                     life: 60 + Math.random() * 40,
@@ -578,6 +595,9 @@ export class GameEngine {
         this.lastInputTime = 0;
         this.screenShake = 0;
         this.milestoneFlash = 0;
+        this.announcementText = '';
+        this.announcementTimer = 0;
+        this.announcementColor = '#FFF';
 
         // Reset item states
         this.activeShield = false;
@@ -606,7 +626,7 @@ export class GameEngine {
         if (options.feverStart) {
             this.feverTimer = 180; // 3 seconds at 60fps
         }
-        this.itemSpawnMultiplier = options.itemLuck ? 1.2 : 1;
+        this.itemSpawnMultiplier = options.itemLuck ? 1.5 : 1;
 
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
@@ -839,6 +859,9 @@ export class GameEngine {
         // Update particles
         this.updateParticles();
 
+        // Update environment
+        this.updateEnvironment();
+
         // Update floating texts
         this.updateFloatingTexts();
 
@@ -848,11 +871,90 @@ export class GameEngine {
         this.targetBgHue = theme.bg.h + (Math.floor(this.score / 500) * 10) % 40;
         this.bgHue += (this.targetBgHue - this.bgHue) * 0.02;
 
+        // Camera Zoom transitions
+        if (this.feverTimer > 0 || this.isRocketing) {
+            this.targetCameraZoom = 1.15; // Zoom in for intensity
+        } else {
+            this.targetCameraZoom = 1.0;
+        }
+        this.cameraZoom += (this.targetCameraZoom - this.cameraZoom) * 0.05;
+
+        // Fever screen overlay
+        if (this.feverTimer > 0) {
+            this.screenOverlayAlpha = Math.min(0.3, this.screenOverlayAlpha + 0.02);
+        } else {
+            this.screenOverlayAlpha = Math.max(0, this.screenOverlayAlpha - 0.02);
+        }
+
         // Screen shake decay
         if (this.screenShake > 0) this.screenShake *= 0.9;
 
         // Milestone flash decay
         if (this.milestoneFlash > 0) this.milestoneFlash--;
+
+        // Announcement timer decay
+        if (this.announcementTimer > 0) this.announcementTimer--;
+    }
+
+    updateEnvironment() {
+        if (!this.weatherParticles) this.weatherParticles = [];
+        const type = this.character.theme?.bgType || 'default';
+        const maxWeather = (type === 'default' || type === 'space') ? 0 : 40;
+
+        if (this.weatherParticles.length < maxWeather && this.frame % 3 === 0) {
+            if (type === 'night' || type === 'castle') {
+                this.weatherParticles.push({
+                    x: Math.random() * this.width,
+                    y: -20,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: Math.random() * 3 + 2,
+                    size: Math.random() * 2 + 1,
+                    type: 'snow',
+                    color: '#FFF'
+                });
+            } else if (type === 'dojo' || type === 'kitchen') {
+                this.weatherParticles.push({
+                    x: Math.random() * this.width,
+                    y: -20,
+                    vx: Math.random() * 1 + 1,
+                    vy: Math.random() * 1.5 + 1.5,
+                    size: Math.random() * 4 + 3,
+                    rot: Math.random() * Math.PI * 2,
+                    rotV: (Math.random() - 0.5) * 0.1,
+                    type: 'leaf',
+                    color: type === 'dojo' ? '#4A7c44' : '#F6AD55'
+                });
+            } else if (type === 'cyber') {
+                this.weatherParticles.push({
+                    x: Math.random() * this.width,
+                    y: -20,
+                    vy: Math.random() * 8 + 8,
+                    size: Math.random() * 1 + 1,
+                    len: Math.random() * 20 + 10,
+                    type: 'digit',
+                    color: '#22d3ee'
+                });
+            } else if (type === 'palace' || type === 'city') {
+                this.weatherParticles.push({
+                    x: Math.random() * this.width,
+                    y: -20,
+                    vx: (Math.random() - 0.5) * 0.5,
+                    vy: Math.random() * 1 + 1,
+                    size: Math.random() * 2 + 2,
+                    type: 'dust',
+                    color: type === 'palace' ? '#FAD02E' : '#A0A0B0',
+                    life: 200
+                });
+            }
+        }
+
+        for (let i = this.weatherParticles.length - 1; i >= 0; i--) {
+            const p = this.weatherParticles[i];
+            p.y += p.vy;
+            if (p.vx) p.x += p.vx;
+            if (p.rot) p.rot += p.rotV;
+            if (p.y > this.height + 50) this.weatherParticles.splice(i, 1);
+        }
     }
 
     updateParticles() {
@@ -900,6 +1002,13 @@ export class GameEngine {
 
         ctx.save();
         ctx.scale(this.scale, this.scale);
+
+        // Apply Camera Zoom (for Fever/Rocket)
+        if (this.cameraZoom !== 1) {
+            ctx.translate(w / 2, h / 2);
+            ctx.scale(this.cameraZoom, this.cameraZoom);
+            ctx.translate(-w / 2, -h / 2);
+        }
 
         // Screen shake (disabled during gameover)
         if (this.screenShake > 0.5 && this.state !== 'gameover') {
@@ -954,22 +1063,47 @@ export class GameEngine {
             ctx.restore();
         }
 
-        // Render particles (in world space)
-        this.renderParticles(ctx);
+        // Render step particles (in world space)
+        this.renderStepParticles(ctx);
+
+        // Render floating texts (in world space)
+        this.renderFloatingTexts(ctx);
 
         ctx.restore();
+
+        // Render weather particles (in screen space)
+        this.renderWeatherParticles(ctx);
 
         // HUD (screen space)
         if (this.state === 'playing' || this.state === 'falling') {
             this.renderHUD(ctx);
         }
 
-        // Floating texts (screen space)
-        this.renderFloatingTexts(ctx);
-
         // Fire overlay (screen space, on top of everything)
         if ((this.state === 'falling' || this.state === 'gameover') && this.fireParticles.length > 0) {
             this.renderFire(ctx);
+        }
+
+        // Fever/Special Overlay
+        if (this.screenOverlayAlpha > 0) {
+            const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, h / 1.2);
+            grad.addColorStop(0, 'transparent');
+            grad.addColorStop(1, `rgba(255, 50, 0, ${this.screenOverlayAlpha})`);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, w, h);
+
+            // Speed lines during intense movement
+            if (this.moveSpeed > this.baseMoveSpeed * 2) {
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.screenOverlayAlpha * 0.5})`;
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 15; i++) {
+                    const x = (this.frame * 20 + i * 50) % w;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.lineTo(x + 20, h);
+                    ctx.stroke();
+                }
+            }
         }
 
         ctx.restore();
@@ -1062,7 +1196,7 @@ export class GameEngine {
         }
     }
 
-    renderParticles(ctx) {
+    renderStepParticles(ctx) {
         for (const p of this.particles) {
             const alpha = p.life / p.maxLife;
             ctx.globalAlpha = alpha;
@@ -1070,6 +1204,36 @@ export class GameEngine {
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
             ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+    }
+
+    renderWeatherParticles(ctx) {
+        if (!this.weatherParticles) return;
+
+        for (const p of this.weatherParticles) {
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.fillStyle = p.color || '#FFF';
+            ctx.globalAlpha = 0.8;
+
+            if (p.type === 'snow' || p.type === 'dust') {
+                ctx.beginPath();
+                ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (p.type === 'leaf') {
+                ctx.rotate(p.rot || 0);
+                ctx.beginPath();
+                ctx.ellipse(0, 0, p.size, p.size / 2, 0, 0, Math.PI * 2);
+                ctx.fill();
+            } else if (p.type === 'digit') {
+                ctx.fillRect(0, 0, p.size, p.len);
+                // Add a tiny glow
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = p.color;
+                ctx.fillRect(0, 0, p.size, p.len);
+            }
+            ctx.restore();
         }
         ctx.globalAlpha = 1;
     }
@@ -1439,7 +1603,8 @@ export class GameEngine {
     }
 
     renderFloatingTexts(ctx) {
-        for (const ft of this.floatingTexts) {
+        for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
+            const ft = this.floatingTexts[i];
             const alpha = ft.life / ft.maxLife;
             ctx.globalAlpha = alpha;
             ctx.fillStyle = ft.color;
@@ -1517,17 +1682,66 @@ export class GameEngine {
         ctx.textAlign = 'center';
         ctx.fillText('⚡ 에너지', w / 2, barY - 6);
 
-        // Combo display
+        // 1. Combo Display (Fixed Top-Right)
         if (this.combo > 2) {
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
+            const comboW = 85;
+            const comboH = 42;
+            const comboX = w - padding - comboW;
+            const comboY = padding;
+
+            const intensity = Math.min(1, this.combo / 100);
+            const comboColor = `hsl(${45 - intensity * 45}, 100%, 50%)`;
+
+            ctx.save();
+            // Background box
+            ctx.fillStyle = 'rgba(0,0,0,0.4)';
             ctx.beginPath();
-            ctx.roundRect(w - padding - 80, padding, 80, 35, 12);
+            ctx.roundRect(comboX, comboY, comboW, comboH, 12);
             ctx.fill();
 
-            ctx.fillStyle = '#FFD700';
-            ctx.font = 'bold 14px "Outfit", sans-serif';
+            // Combo Timer Bar
+            const timerRatio = this.comboTimer / 60;
+            ctx.fillStyle = comboColor;
+            ctx.beginPath();
+            ctx.roundRect(comboX + 5, comboY + comboH - 6, (comboW - 10) * timerRatio, 3, 2);
+            ctx.fill();
+
+            // Combo Text with pop effect
+            const pop = 1 + Math.max(0, Math.sin(this.combo * 0.5) * 0.12);
+            ctx.translate(comboX + comboW / 2, comboY + 20);
+            ctx.scale(pop, pop);
+
+            ctx.fillStyle = comboColor;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = comboColor;
+            ctx.font = 'bold 18px "Outfit", sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText(`🔥 x${this.combo}`, w - padding - 40, padding + 23);
+            ctx.fillText(`${this.combo}`, 0, 0);
+
+            ctx.font = 'bold 9px "Outfit", sans-serif';
+            ctx.globalAlpha = 0.9;
+            ctx.fillText('COMBO', 0, 12);
+            ctx.restore();
+        }
+
+        // 2. Announcement Display (Fixed Top-Center milestone messages)
+        if (this.announcementTimer > 0) {
+            ctx.save();
+            const centerX = w / 2;
+            const centerY = padding + 65;
+            const alpha = Math.min(1, this.announcementTimer / 20);
+
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = this.announcementColor;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.announcementColor;
+            ctx.font = 'bold 20px "Outfit", sans-serif';
+            ctx.textAlign = 'center';
+
+            // Subtle float up
+            const offsetY = (1 - alpha) * 15;
+            ctx.fillText(this.announcementText, centerX, centerY + offsetY);
+            ctx.restore();
         }
 
         // Direction indicator
@@ -1546,7 +1760,6 @@ export class GameEngine {
         if (this.feverTimer > 0) {
             const secondsLeft = (this.feverTimer / 60).toFixed(1);
             const feverProgress = this.feverTimer / 300;
-
             ctx.save();
             ctx.translate(w / 2, h / 2 - 100);
 
@@ -1617,7 +1830,7 @@ export class GameEngine {
         this.width = this.baseWidth;
         this.height = height / this.scale;
 
-        // Force regeneration of stars to cover new logical area if needed
+        // Force regeneration of stars to cover new logical area
         if (this.stars) {
             this.stars = [];
             for (let i = 0; i < 50; i++) {
@@ -1630,6 +1843,9 @@ export class GameEngine {
                 });
             }
         }
+
+        // Clear weather on resize
+        this.weatherParticles = [];
     }
 
     destroy() {
