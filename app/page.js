@@ -83,11 +83,21 @@ export default function Home() {
     setMuted(isMuted);
   }, []);
 
+  // Determine if we should show character bg image on the full page
+  const showBgImage = (screen === 'playing' || screen === 'result') && selectedChar.theme?.bgImage;
+
   return (
-    <div className="app-container">
+    <div
+      className="app-container"
+      style={showBgImage ? {
+        backgroundImage: `url(${selectedChar.theme.bgImage})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      } : undefined}
+    >
       {/* Background decorations */}
-      <div className="bg-orb bg-orb-1" />
-      <div className="bg-orb bg-orb-2" />
+      {!showBgImage && <div className="bg-orb bg-orb-1" />}
+      {!showBgImage && <div className="bg-orb bg-orb-2" />}
 
       {/* Mute button */}
       <button className="mute-btn" onClick={toggleMute} id="btn-mute">
@@ -110,45 +120,52 @@ export default function Home() {
           backdropFilter: 'blur(4px)',
           userSelect: 'none'
         }}>
-          v0.5.0
+          v0.6.0
         </div>
       )}
 
       {/* Main Menu Screen */}
       <div className={`screen main-menu ${screen === 'menu' ? 'visible' : 'hidden'}`}>
-        <div className="game-logo fade-in-up fade-in-up-1">
-          <div className="stairs-animation">
-            <div className="stair-block" />
-            <div className="stair-block" />
-            <div className="stair-block" />
-            <div className="stair-block" />
-            <div className="stair-block" />
-            <div className="stair-block" />
-          </div>
-        </div>
-        <h1 className="game-title fade-in-up fade-in-up-2">무한의 계단</h1>
-        <p className="game-subtitle fade-in-up fade-in-up-2">INFINITE STAIRS</p>
-
-        <CharacterPreview character={selectedChar} />
-
-        <div className="menu-stats fade-in-up fade-in-up-3">
-          {highScore > 0 && (
-            <div className="high-score-badge">
-              👑 최고 기록: {highScore}층
+        <div className="menu-card">
+          <div className="game-logo fade-in-up fade-in-up-1">
+            <div className="stairs-animation">
+              <div className="stair-block" />
+              <div className="stair-block" />
+              <div className="stair-block" />
+              <div className="stair-block" />
+              <div className="stair-block" />
+              <div className="stair-block" />
             </div>
-          )}
-          <div className="coin-badge" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#FFD700' }}>
-            <Icon src="/icons8-coin-100.png" size={18} color="currentColor" /> 보유 코인: {totalCoins}개
           </div>
-        </div>
+          <h1 className="game-title fade-in-up fade-in-up-2">무한의 계단</h1>
+          <p className="game-subtitle fade-in-up fade-in-up-2">INFINITE STAIRS</p>
 
-        <div className="menu-buttons fade-in-up fade-in-up-4">
-          <button className="btn-play" onClick={handleStartGame} id="btn-start" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
-            <Icon src="/icons8-game-100.png" size={32} color="#FFFFFF" /> 게임 시작
-          </button>
-          <button className="btn-secondary" onClick={handleCharSelect} id="btn-chars">
-            🎭 캐릭터 선택
-          </button>
+          <CharacterPreview character={selectedChar} />
+
+          <div className="menu-stats fade-in-up fade-in-up-3">
+            {highScore > 0 && (
+              <div className="high-score-badge">
+                👑 최고 기록: {highScore}층
+              </div>
+            )}
+            <div className="coin-badge">
+              <Icon src="/icons8-coin-100.png" size={18} color="currentColor" /> 보유 코인: {totalCoins}개
+            </div>
+          </div>
+
+          <div className="menu-buttons fade-in-up fade-in-up-4">
+            <button className="btn-play" onClick={handleStartGame} id="btn-start">
+              <div className="btn-content">
+                <Icon src="/icons8-game-100.png" size={32} color="#FFFFFF" />
+                <span>게임 시작</span>
+              </div>
+              <div className="btn-shine"></div>
+            </button>
+            <button className="btn-secondary" onClick={handleCharSelect} id="btn-chars">
+              <Icon src="/icons8-character-100.png" size={24} color="currentColor" />
+              <span>캐릭터 선택</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -175,14 +192,21 @@ export default function Home() {
         <div className="result-score-card fade-in-up fade-in-up-2">
           <div className="result-score-label">최종 점수</div>
           <div className="result-score-value">{lastScore}</div>
-          <div className="result-highscore">
-            👑 최고 기록: {highScore}층
-          </div>
-          <div style={{ marginTop: '10px', color: '#FFD700', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px' }}>
-            <Icon src="/icons8-coin-100.png" size={24} color="#FFD700" /> 획득 코인: +{earnedCoins}
-          </div>
-          <div style={{ fontSize: '12px', opacity: 0.7, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '5px', gap: '5px' }}>
-            <Icon src="/icons8-coin-100.png" size={16} color="#FFFFFF" /> 보유 코인: {totalCoins}
+          <div className="result-stats">
+            <div className="result-stat-item">
+              <span>👑 최고 기록</span>
+              <strong>{highScore}층</strong>
+            </div>
+            <div className="result-stat-item highlight">
+              <Icon src="/icons8-coin-100.png" size={16} color="#FFD700" />
+              <span>획득 코인</span>
+              <strong>+{earnedCoins}</strong>
+            </div>
+            <div className="result-stat-item">
+              <Icon src="/icons8-coin-100.png" size={14} color="rgba(255,255,255,0.7)" />
+              <span>보유 코인</span>
+              <strong>{totalCoins}</strong>
+            </div>
           </div>
         </div>
 
@@ -203,15 +227,22 @@ export default function Home() {
 
         <div className="result-buttons fade-in-up fade-in-up-4">
           {canRevive && totalCoins >= 50 && (
-            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive" style={{ background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
-              <Icon src="/icons8-coin-100.png" size={32} color="#FFFFFF" /> 50코인으로 부활
+            <button className="btn-play revive-btn" onClick={handleRevive} id="btn-revive">
+              <div className="btn-content">
+                <Icon src="/icons8-coin-100.png" size={28} color="#FFFFFF" />
+                <span>50코인으로 부활</span>
+              </div>
             </button>
           )}
-          <button className="btn-play" onClick={handleStartGame} id="btn-retry" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
-            <Icon src="/icons8-retry-60.png" size={32} color="#FFFFFF" /> 다시 도전
+          <button className="btn-play" onClick={handleStartGame} id="btn-retry">
+            <div className="btn-content">
+              <Icon src="/icons8-retry-60.png" size={28} color="#FFFFFF" />
+              <span>다시 도전</span>
+            </div>
           </button>
-          <button className="btn-secondary" onClick={handleBackToMenu} id="btn-to-menu" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', color: '#fff' }}>
-            <Icon src="/icons8-home-100.png" size={24} color="#FFFFFF" /> 메인 화면
+          <button className="btn-secondary" onClick={handleBackToMenu} id="btn-to-menu">
+            <Icon src="/icons8-home-100.png" size={20} color="currentColor" />
+            <span>메인 화면</span>
           </button>
         </div>
       </div>

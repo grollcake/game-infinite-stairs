@@ -28,8 +28,8 @@ export const CHARACTERS = [
     {
         id: 'ninja',
         name: '닌자',
-        description: '100점 달성 시 해금',
-        unlockScore: 100,
+        description: '재빠른 닌자',
+        unlockScore: 0,
         colors: {
             body: '#2D2D2D',
             bodyDark: '#1A1A1A',
@@ -53,8 +53,8 @@ export const CHARACTERS = [
     {
         id: 'princess',
         name: '공주',
-        description: '300점 달성 시 해금',
-        unlockScore: 300,
+        description: '우아한 공주님',
+        unlockScore: 0,
         colors: {
             body: '#FF69B4',
             bodyDark: '#E0509A',
@@ -78,8 +78,8 @@ export const CHARACTERS = [
     {
         id: 'robot',
         name: '로봇',
-        description: '500점 달성 시 해금',
-        unlockScore: 500,
+        description: '최첨단 로봇',
+        unlockScore: 0,
         colors: {
             body: '#A0A0B0',
             bodyDark: '#808090',
@@ -93,6 +93,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'cyber',
+            bgImage: '/bg-dotgame.png',
             stairType: 'metal',
             bg: { h: 210, s: 30, l: 10 },
             stair: '#4A5568',
@@ -103,8 +104,8 @@ export const CHARACTERS = [
     {
         id: 'viking',
         name: '바이킹',
-        description: '700점 달성 시 해금',
-        unlockScore: 700,
+        description: '용맹한 바이킹',
+        unlockScore: 0,
         colors: {
             body: '#8B4513',
             bodyDark: '#5D2E0C',
@@ -128,8 +129,8 @@ export const CHARACTERS = [
     {
         id: 'chef',
         name: '요리사',
-        description: '1000점 달성 시 해금',
-        unlockScore: 1000,
+        description: '최고의 요리사',
+        unlockScore: 0,
         colors: {
             body: '#EBEDEF',
             bodyDark: '#D0D3D4',
@@ -153,8 +154,8 @@ export const CHARACTERS = [
     {
         id: 'alien',
         name: '외계인',
-        description: '1500점 달성 시 해금',
-        unlockScore: 1500,
+        description: '신비한 외계인',
+        unlockScore: 0,
         colors: {
             body: '#2ECC71',
             bodyDark: '#27AE60',
@@ -168,6 +169,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'space',
+            bgImage: '/bg-blackhole.jpg',
             stairType: 'neon',
             bg: { h: 140, s: 50, l: 8 },
             stair: '#2F855A',
@@ -178,8 +180,8 @@ export const CHARACTERS = [
     {
         id: 'vampire',
         name: '흡혈귀',
-        description: '2000점 달성 시 해금',
-        unlockScore: 2000,
+        description: '어둠의 흡혈귀',
+        unlockScore: 0,
         colors: {
             body: '#1A1A1A',
             bodyDark: '#000000',
@@ -193,6 +195,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'night',
+            bgImage: '/bg-vampire.png',
             stairType: 'gothic',
             bg: { h: 260, s: 40, l: 8 },
             stair: '#2D3748',
@@ -203,8 +206,8 @@ export const CHARACTERS = [
     {
         id: 'hero',
         name: '영웅',
-        description: '3000점 달성 시 해금',
-        unlockScore: 3000,
+        description: '정의의 영웅',
+        unlockScore: 0,
         colors: {
             body: '#3498DB',
             bodyDark: '#2980B9',
@@ -218,6 +221,7 @@ export const CHARACTERS = [
         },
         theme: {
             bgType: 'city',
+            bgImage: '/bg-hero.jpg',
             stairType: 'glass',
             bg: { h: 200, s: 70, l: 20 },
             stair: '#3182CE',
@@ -228,8 +232,8 @@ export const CHARACTERS = [
     {
         id: 'king',
         name: '임금님',
-        description: '5000점 달성 시 해금',
-        unlockScore: 5000,
+        description: '위대한 임금님',
+        unlockScore: 0,
         colors: {
             body: '#9B59B6',
             bodyDark: '#8E44AD',

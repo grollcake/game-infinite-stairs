@@ -132,6 +132,13 @@ export class GameEngine {
         this.fireParticles = [];
         this.fireIntensity = 0;
 
+        // Background Image Support
+        this.bgImage = null;
+        if (this.character.theme && this.character.theme.bgImage) {
+            this.bgImage = new Image();
+            this.bgImage.src = this.character.theme.bgImage;
+        }
+
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
     }
@@ -1081,12 +1088,17 @@ export class GameEngine {
         };
         const bg = theme.bg;
 
-        // Base Gradient
-        const gradient = ctx.createLinearGradient(0, 0, 0, h);
-        gradient.addColorStop(0, `hsl(${this.bgHue}, ${bg.s}%, ${bg.l}%)`);
-        gradient.addColorStop(1, `hsl(${this.bgHue + 20}, ${bg.s + 10}%, ${bg.l + 5}%)`);
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, w, h);
+        // If background image is set, make canvas transparent so CSS bg shows through
+        if (this.bgImage && this.bgImage.complete && this.bgImage.naturalWidth > 0) {
+            ctx.clearRect(0, 0, w, h);
+        } else {
+            // Fallback: Base Gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, h);
+            gradient.addColorStop(0, `hsl(${this.bgHue}, ${bg.s}%, ${bg.l}%)`);
+            gradient.addColorStop(1, `hsl(${this.bgHue + 20}, ${bg.s + 10}%, ${bg.l + 5}%)`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, w, h);
+        }
 
         const type = theme.bgType || 'default';
 
@@ -1444,6 +1456,21 @@ export class GameEngine {
 
     setCharacter(character) {
         this.character = character;
+
+        // Update background image if character changes
+        if (this.character.theme && this.character.theme.bgImage) {
+            this.bgImage = new Image();
+            this.bgImage.src = this.character.theme.bgImage;
+        } else {
+            this.bgImage = null;
+        }
+
+        // Update bgHue for fallback gradient
+        const theme = this.character.theme || {
+            bg: { h: 220, s: 30, l: 15 }
+        };
+        this.bgHue = theme.bg.h;
+        this.targetBgHue = theme.bg.h;
     }
 
     onGameOver(callback) {
