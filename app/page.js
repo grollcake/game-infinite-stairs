@@ -13,8 +13,9 @@ const SHOP_ITEMS = {
     { id: 'itemLuck', name: '행운의 부적', desc: '아이템 출현 빈도 20% 증가', price: 250, icon: '🍀' },
   ],
   consumables: [
-    { id: 'startShield', name: '시작 쉴드', desc: '게임 시작 시 쉴드 보유', price: 30, icon: '🛡️' },
-    { id: 'feverStart', name: '피버 부스트', desc: '게임 시작 시 3초 피버', price: 40, icon: '🔥' },
+    { id: 'startShield', name: '시작 쉴드', desc: '쉴드 즉시 사용', price: 120, icon: '🛡️' },
+    { id: 'feverStart', name: '피버 부스트', desc: '피버 즉시 사용', price: 160, icon: '🔥' },
+    { id: 'rocketJump', name: '로켓 점프', desc: '20칸 즉시 상승', price: 200, icon: '🚀' },
   ],
 };
 
@@ -61,27 +62,22 @@ export default function Home() {
     soundManager.init();
     soundManager.playStartGame();
 
-    // Build shop options from upgrades + consume consumables
-    const options = { ...upgrades };
-    const newConsumables = { ...consumables };
-
-    if ((newConsumables.startShield || 0) > 0) {
-      options.startShield = true;
-      newConsumables.startShield--;
-    }
-    if ((newConsumables.feverStart || 0) > 0) {
-      options.feverStart = true;
-      newConsumables.feverStart--;
-    }
-
-    setConsumables(newConsumables);
-    localStorage.setItem('infiniteStairs_consumables', JSON.stringify(newConsumables));
-    setShopOptions(options);
+    // Build shop options from permanent upgrades only
+    setShopOptions({ ...upgrades });
 
     setGameKey(prev => prev + 1);
     setScreen('playing');
     setCanRevive(true);
-  }, [upgrades, consumables]);
+  }, [upgrades]);
+
+  const handleUseConsumable = useCallback((itemId) => {
+    const count = consumables[itemId] || 0;
+    if (count <= 0) return false;
+    const newConsumables = { ...consumables, [itemId]: count - 1 };
+    setConsumables(newConsumables);
+    localStorage.setItem('infiniteStairs_consumables', JSON.stringify(newConsumables));
+    return true;
+  }, [consumables]);
 
   const handleGameOver = useCallback((score, newHigh, unlocks, earned, total) => {
     setLastScore(score);
@@ -201,7 +197,7 @@ export default function Home() {
           backdropFilter: 'blur(4px)',
           userSelect: 'none'
         }}>
-          v0.6.0
+          v0.7.0
         </div>
       )}
 
@@ -242,13 +238,15 @@ export default function Home() {
               </div>
               <div className="btn-shine"></div>
             </button>
-            <button className="btn-secondary" onClick={handleCharSelect} id="btn-chars">
-              <Icon src="/icons8-character-100.png" size={24} color="currentColor" />
-              <span>캐릭터 선택</span>
-            </button>
-            <button className="btn-secondary" onClick={() => setScreen('shop')} id="btn-shop">
-              🏪 <span>상점</span>
-            </button>
+            <div className="menu-buttons-row">
+              <button className="btn-secondary" onClick={handleCharSelect} id="btn-chars">
+                <Icon src="/icons8-character-100.png" size={24} color="currentColor" />
+                <span>캐릭터 선택</span>
+              </button>
+              <button className="btn-secondary" onClick={() => setScreen('shop')} id="btn-shop">
+                🏪 <span>상점</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -264,6 +262,8 @@ export default function Home() {
             onGameOver={handleGameOver}
             gameState="playing"
             shopOptions={shopOptions}
+            consumables={consumables}
+            onUseConsumable={handleUseConsumable}
           />
         )}
       </div>
@@ -366,31 +366,6 @@ export default function Home() {
 
         <div className="shop-content fade-in-up fade-in-up-2">
           <div className="shop-section">
-            <h3 className="shop-section-title">⚡ 영구 업그레이드</h3>
-            {SHOP_ITEMS.upgrades.map(item => (
-              <div key={item.id} className={`shop-item ${upgrades[item.id] ? 'owned' : ''}`}>
-                <div className="shop-item-icon">{item.icon}</div>
-                <div className="shop-item-info">
-                  <div className="shop-item-name">{item.name}</div>
-                  <div className="shop-item-desc">{item.desc}</div>
-                </div>
-                {upgrades[item.id] ? (
-                  <div className="shop-item-owned">보유 중</div>
-                ) : (
-                  <button
-                    className="shop-buy-btn"
-                    disabled={totalCoins < item.price}
-                    onClick={() => handleBuyUpgrade(item)}
-                  >
-                    <Icon src="/icons8-coin-100.png" size={14} color="#FFD700" />
-                    {item.price}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          <div className="shop-section">
             <h3 className="shop-section-title">🎒 소모 아이템</h3>
             {SHOP_ITEMS.consumables.map(item => (
               <div key={item.id} className="shop-item">
@@ -412,6 +387,31 @@ export default function Home() {
                   <Icon src="/icons8-coin-100.png" size={14} color="#FFD700" />
                   {item.price}
                 </button>
+              </div>
+            ))}
+          </div>
+
+          <div className="shop-section">
+            <h3 className="shop-section-title">⚡ 영구 업그레이드</h3>
+            {SHOP_ITEMS.upgrades.map(item => (
+              <div key={item.id} className={`shop-item ${upgrades[item.id] ? 'owned' : ''}`}>
+                <div className="shop-item-icon">{item.icon}</div>
+                <div className="shop-item-info">
+                  <div className="shop-item-name">{item.name}</div>
+                  <div className="shop-item-desc">{item.desc}</div>
+                </div>
+                {upgrades[item.id] ? (
+                  <div className="shop-item-owned">보유 중</div>
+                ) : (
+                  <button
+                    className="shop-buy-btn"
+                    disabled={totalCoins < item.price}
+                    onClick={() => handleBuyUpgrade(item)}
+                  >
+                    <Icon src="/icons8-coin-100.png" size={14} color="#FFD700" />
+                    {item.price}
+                  </button>
+                )}
               </div>
             ))}
           </div>

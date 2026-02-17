@@ -617,6 +617,26 @@ export class GameEngine {
         soundManager.playStartGame();
     }
 
+    activateShield() {
+        if (this.state !== 'playing' || this.activeShield) return false;
+        this.activeShield = true;
+        this.addFloatingText('🛡️ 쉴드!', this.playerX, this.playerY - 30, '#4FC3F7', 1.2);
+        return true;
+    }
+
+    activateFever() {
+        if (this.state !== 'playing' || this.feverTimer > 0) return false;
+        this.feverTimer = 180; // 3 seconds
+        this.addFloatingText('🔥 피버!', this.playerX, this.playerY - 30, '#FF6B6B', 1.2);
+        return true;
+    }
+
+    activateRocket() {
+        if (this.state !== 'playing' || this.isRocketing) return false;
+        this.startRocket();
+        return true;
+    }
+
     update() {
         this.frame++;
 

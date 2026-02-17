@@ -9,7 +9,9 @@ const GameCanvas = forwardRef(({
     onGameOver,
     gameState,
     onGameStart,
-    shopOptions
+    shopOptions,
+    consumables,
+    onUseConsumable
 }, ref) => {
     const canvasRef = useRef(null);
     const engineRef = useRef(null);
@@ -59,13 +61,10 @@ const GameCanvas = forwardRef(({
         canvas.height = canvasSize.height;
         if (engine.resize) {
             engine.resize(canvasSize.width, canvasSize.height);
-        } else {
-            engine.width = canvasSize.width;
-            engine.height = canvasSize.height;
         }
     }, [canvasSize]);
 
-    // Create engine once and start game immediately
+    // Initialize engine
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
@@ -73,8 +72,8 @@ const GameCanvas = forwardRef(({
         canvas.width = canvasSize.width;
         canvas.height = canvasSize.height;
 
-        const engine = new GameEngine(canvas, character || CHARACTERS[0]);
-        engine.onGameOver(onGameOver);
+        const engine = new GameEngine(canvas, character);
+        engine.gameOverCallback = onGameOver;
         engineRef.current = engine;
 
         // Start the game right away
@@ -94,8 +93,7 @@ const GameCanvas = forwardRef(({
             }
             engine.destroy();
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [character, onGameOver, shopOptions]);
 
     const toggleAutoDirection = useCallback(() => {
         if (engineRef.current) {
@@ -117,6 +115,24 @@ const GameCanvas = forwardRef(({
         }
     }, []);
 
+    const handleUseItem = useCallback((itemId) => {
+        if (!engineRef.current || engineRef.current.state !== 'playing') return;
+        if (!onUseConsumable) return;
+
+        let activated = false;
+        if (itemId === 'startShield') {
+            activated = engineRef.current.activateShield();
+        } else if (itemId === 'feverStart') {
+            activated = engineRef.current.activateFever();
+        } else if (itemId === 'rocketJump') {
+            activated = engineRef.current.activateRocket();
+        }
+
+        if (activated) {
+            onUseConsumable(itemId);
+        }
+    }, [onUseConsumable]);
+
     // Keyboard controls
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -135,11 +151,21 @@ const GameCanvas = forwardRef(({
             if (e.key === '`') {
                 toggleAutoDirection();
             }
+            // Item shortcuts: 1 = shield, 2 = fever, 3 = rocket
+            if (e.key === '1') handleUseItem('startShield');
+            if (e.key === '2') handleUseItem('feverStart');
+            if (e.key === '3') handleUseItem('rocketJump');
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [handleStep, handleDirectionChange, toggleAutoDirection]);
+    }, [handleStep, handleDirectionChange, toggleAutoDirection, handleUseItem]);
+
+    const itemSlots = [
+        { id: 'startShield', icon: '🛡️', label: '쉴드' },
+        { id: 'feverStart', icon: '🔥', label: '피버' },
+        { id: 'rocketJump', icon: '🚀', label: '로켓' },
+    ].filter(slot => (consumables?.[slot.id] || 0) > 0);
 
     return (
         <div className="game-canvas-wrapper">
@@ -164,7 +190,7 @@ const GameCanvas = forwardRef(({
                         transition: 'color 0.2s ease'
                     }}
                 >
-                    v0.6.0
+                    v0.7.0
                 </div>
             )}
 
@@ -178,34 +204,53 @@ const GameCanvas = forwardRef(({
             />
 
             {gameState === 'playing' && (
-                <div className="game-controls-overlay">
-                    <div className="controls-left">
-                        <button
-                            className="control-btn direction-btn"
-                            onPointerDown={(e) => {
-                                e.preventDefault();
-                                handleDirectionChange();
-                            }}
-                            id="btn-direction"
-                        >
-                            <span className="btn-icon">⇄</span>
-                            <span className="btn-label">방향 전환</span>
-                        </button>
+                <>
+                    {itemSlots.length > 0 && (
+                        <div className="item-slots">
+                            {itemSlots.map(slot => (
+                                <button
+                                    key={slot.id}
+                                    className="item-slot-btn"
+                                    onPointerDown={(e) => {
+                                        e.preventDefault();
+                                        handleUseItem(slot.id);
+                                    }}
+                                >
+                                    <span className="item-slot-icon">{slot.icon}</span>
+                                    <span className="item-slot-count">{consumables[slot.id]}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    <div className="game-controls-overlay">
+                        <div className="controls-left">
+                            <button
+                                className="control-btn direction-btn"
+                                onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    handleDirectionChange();
+                                }}
+                                id="btn-direction"
+                            >
+                                <span className="btn-icon">⇄</span>
+                                <span className="btn-label">방향 전환</span>
+                            </button>
+                        </div>
+                        <div className="controls-right">
+                            <button
+                                className="control-btn step-btn"
+                                onPointerDown={(e) => {
+                                    e.preventDefault();
+                                    handleStep();
+                                }}
+                                id="btn-step"
+                            >
+                                <span className="btn-icon">⬆</span>
+                                <span className="btn-label">점프</span>
+                            </button>
+                        </div>
                     </div>
-                    <div className="controls-right">
-                        <button
-                            className="control-btn step-btn"
-                            onPointerDown={(e) => {
-                                e.preventDefault();
-                                handleStep();
-                            }}
-                            id="btn-step"
-                        >
-                            <span className="btn-icon">⬆</span>
-                            <span className="btn-label">점프</span>
-                        </button>
-                    </div>
-                </div>
+                </>
             )}
         </div>
     );
