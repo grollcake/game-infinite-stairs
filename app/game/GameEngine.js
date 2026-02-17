@@ -988,35 +988,21 @@ export class GameEngine {
             const sx = stair.x - sw / 2;
             const sy = stair.y;
 
-            // Stair body
             const theme = this.character.theme || {
                 stair: '#7B8FA0',
                 stairNext: '#9AB0C4',
                 stairVisited: '#5A90D0',
             };
 
-            // Force transparent stairs for Viking (just in case theme prop is stale)
-            if (this.character && this.character.id === 'viking') {
-                theme.stairType = 'transparent_with_flag';
-            }
+            const type = theme.stairType || 'default';
 
-            // Only draw shadow if NOT transparent
-            if (theme.stairType !== 'transparent_with_flag') {
-                // Stair shadow
+            // Stair shadow (Not for transparent or neon types)
+            if (type !== 'transparent_with_flag' && type !== 'neon' && type !== 'glass') {
                 ctx.fillStyle = 'rgba(0,0,0,0.2)';
                 ctx.fillRect(sx + 3, sy + 3, sw, sh);
             }
 
-            if (stair.visited) {
-                ctx.fillStyle = theme.stairVisited;
-            } else if (i === this.currentStairIndex + 1) {
-                // Next stair highlight (subtle glow)
-                ctx.fillStyle = theme.stairNext;
-            } else {
-                ctx.fillStyle = theme.stair;
-            }
-
-            // Render stair content
+            // Render main stair body and details
             this.renderStair(ctx, sx, sy, sw, sh, stair, i, theme);
 
             // Render item if present
@@ -1034,8 +1020,8 @@ export class GameEngine {
 
                 // Item aura
                 const aura = ctx.createRadialGradient(0, 5, 2, 0, 5, 15);
-                aura.addColorStop(0, stair.item.color + '66'); // 40% alpha
-                aura.addColorStop(1, stair.item.color + '00'); // 0% alpha
+                aura.addColorStop(0, stair.item.color + '66');
+                aura.addColorStop(1, stair.item.color + '00');
                 ctx.fillStyle = aura;
                 ctx.beginPath();
                 ctx.arc(0, 5, 15, 0, Math.PI * 2);
@@ -1047,37 +1033,31 @@ export class GameEngine {
                 ctx.font = '22px serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(stair.item.label, 0, 10);
-
                 ctx.restore();
             }
 
-            if (theme.stairType !== 'transparent_with_flag') {
-                // Stair highlight
-                ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            // Common overlays (Not for special types)
+            if (type !== 'transparent_with_flag' && type !== 'neon' && type !== 'glass') {
+                // Subtle highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.1)';
                 ctx.fillRect(sx + 2, sy + 1, sw - 4, sh / 3);
 
-                // Stair outline
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                // Generic outline
+                ctx.strokeStyle = 'rgba(0,0,0,0.2)';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
                 ctx.roundRect(sx, sy, sw, sh, 4);
                 ctx.stroke();
+            }
 
-                // Floor number every 10 stairs
-                if (i > 0 && i % 10 === 0) {
-                    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                    ctx.font = '10px "Outfit", sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`${i}`, stair.x, sy + sh - 3);
-                }
-            } else {
-                // Floor number for transparent stairs (draw floating number instead)
-                if (i > 0 && i % 10 === 0) {
-                    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                    ctx.font = '10px "Outfit", sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`${i}`, stair.x, sy + sh + 15);
-                }
+            // Floor number
+            if (i > 0 && i % 10 === 0) {
+                const isBright = type === 'neon' || type === 'glass' || type === 'transparent_with_flag';
+                ctx.fillStyle = isBright ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.3)';
+                ctx.font = '10px "Outfit", sans-serif';
+                ctx.textAlign = 'center';
+                const labelY = type === 'transparent_with_flag' ? sy + sh + 15 : sy + sh - 3;
+                ctx.fillText(`${i}`, stair.x, labelY);
             }
         }
     }
@@ -1249,103 +1229,212 @@ export class GameEngine {
             type = 'transparent_with_flag';
         }
 
-        // Transparent stair logic (Viking)
-        if (type === 'transparent_with_flag') {
-            // Check next stair for direction change
-            const nextStair = this.stairs[index + 1];
-            // Also check if this is the stair BEFORE a turn.
-            // "방향 전환을 해야만 하는 계단" -> The stair where you need to input TURN.
-            // If currently on stair A, and stair B is diff direction, input TURN on A.
-            // So if stair[index+1] direction != stair[index] direction, draw flag on stair[index].
+        const isVisited = stair.visited;
+        const isNext = index === this.currentStairIndex + 1;
+        const baseColor = isVisited ? theme.stairVisited : (isNext ? theme.stairNext : theme.stair);
 
+        // 1. Transparent stair logic (Viking)
+        if (type === 'transparent_with_flag') {
+            const nextStair = this.stairs[index + 1];
             if (nextStair) {
-                // Calculate actual directions based on X coordinates to be safe
-                let currDir = stair.direction; // Default fallback
+                let currDir = stair.direction;
                 if (index > 0) {
                     const prevStair = this.stairs[index - 1];
-                    // Direction we came FROM to get here
                     currDir = Math.sign(stair.x - prevStair.x);
                 }
-
-                // Direction we are GOING to next
                 let nextDir = Math.sign(nextStair.x - stair.x);
-                if (nextDir === 0) nextDir = currDir; // Treat vertical step as same direction
+                if (nextDir === 0) nextDir = currDir;
 
                 if (currDir !== nextDir) {
-                    // Draw Flag
+                    // Draw Improved Flag
                     const fx = sx + sw / 2;
-                    const fy = sy; // Base of pole
+                    const fy = sy;
+                    const wave = Math.sin(this.frame * 0.15 + index) * 3;
 
-                    // Flag pole
-                    ctx.strokeStyle = '#8B4513'; // Wood color
+                    // Pole shadow
+                    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(fx + 2, fy);
+                    ctx.lineTo(fx + 2, fy - 40);
+                    ctx.stroke();
+
+                    // Pole
+                    ctx.strokeStyle = '#5D2E0C'; // Dark Wood
                     ctx.lineWidth = 3;
                     ctx.beginPath();
                     ctx.moveTo(fx, fy);
                     ctx.lineTo(fx, fy - 40);
                     ctx.stroke();
 
-                    // Flag cloth
-                    ctx.fillStyle = '#FF4444'; // Red flag
+                    // Flag cloth with wave
+                    ctx.fillStyle = '#C0392B';
                     ctx.beginPath();
                     ctx.moveTo(fx, fy - 40);
-                    ctx.lineTo(fx + 25, fy - 30);
-                    ctx.lineTo(fx, fy - 20);
+                    ctx.quadraticCurveTo(fx + 12 + wave, fy - 45, fx + 25 + wave, fy - 35);
+                    ctx.lineTo(fx + 25 + wave, fy - 25);
+                    ctx.quadraticCurveTo(fx + 12 + wave, fy - 35, fx, fy - 30);
                     ctx.fill();
+
+                    // Flag detail (W crossed)
+                    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(fx + 5, fy - 35);
+                    ctx.lineTo(fx + 10, fy - 28);
+                    ctx.lineTo(fx + 15, fy - 35);
+                    ctx.stroke();
                 }
             }
 
-            // If falling, dead, or visited, show the stair partially
-            // Otherwise, keep it invisible (return early)
             const isDead = this.state === 'falling' || this.state === 'gameover';
-            if (!isDead && !stair.visited) {
-                // Do not draw the stair base
-                return;
-            }
-
-            // If visible, use a semi-transparent style
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            if (!isDead && !stair.visited) return;
+            ctx.fillStyle = isVisited ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)';
         } else {
-            // Normal base color logic
-            if (stair.visited) {
-                ctx.fillStyle = theme.stairVisited;
-            } else if (index === this.currentStairIndex + 1) {
-                ctx.fillStyle = theme.stairNext;
-            } else {
-                ctx.fillStyle = theme.stair;
-            }
+            ctx.fillStyle = baseColor;
         }
 
+        // Draw Base Shape
         ctx.beginPath();
         ctx.roundRect(sx, sy, sw, sh, 4);
         ctx.fill();
 
-        // Details based on type
+        // 2. Type-specific decorations
         if (type === 'marble') {
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-            ctx.lineWidth = 1;
+            // Elegant Marble Veins
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 0.8;
             ctx.beginPath();
-            ctx.moveTo(sx + 5, sy + sh);
-            ctx.lineTo(sx + sw - 10, sy);
-            ctx.moveTo(sx + 15, sy + sh);
-            ctx.lineTo(sx + sw, sy + 5);
+            ctx.moveTo(sx + sw * 0.1, sy + sh);
+            ctx.bezierCurveTo(sx + sw * 0.3, sy + sh * 0.7, sx + sw * 0.2, sy + sh * 0.3, sx + sw * 0.5, sy);
+            ctx.moveTo(sx + sw * 0.6, sy + sh);
+            ctx.bezierCurveTo(sx + sw * 0.8, sy + sh * 0.5, sx + sw * 0.7, sy + sh * 0.2, sx + sw * 0.9, sy);
             ctx.stroke();
+
+            // Glossy Shine
+            const grad = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh);
+            grad.addColorStop(0, 'rgba(255,255,255,0.2)');
+            grad.addColorStop(0.5, 'rgba(255,255,255,0)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.05)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(sx, sy, sw, sh);
+
         } else if (type === 'wood' || type === 'wood_plank') {
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-            ctx.fillRect(sx, sy + 5, sw, 2);
-            ctx.fillRect(sx, sy + 15, sw, 2);
+            // Detailed Wood Grain
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+            ctx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const wy = sy + (sh / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(sx, wy);
+                ctx.quadraticCurveTo(sx + sw / 2, wy + Math.sin(index + i) * 3, sx + sw, wy);
+                ctx.stroke();
+            }
+            // Knots
+            if (index % 3 === 0) {
+                ctx.beginPath();
+                ctx.ellipse(sx + sw * 0.7, sy + sh * 0.5, 5, 2, 0, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
         } else if (type === 'checkered') {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            // Kitchen Tiles
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             ctx.fillRect(sx, sy, sw / 2, sh / 2);
             ctx.fillRect(sx + sw / 2, sy + sh / 2, sw / 2, sh / 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeRect(sx, sy, sw, sh);
+
         } else if (type === 'metal') {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-            ctx.fillRect(sx + 2, sy + 2, 4, 4);
-            ctx.fillRect(sx + sw - 6, sy + 2, 4, 4);
-            ctx.fillRect(sx + 2, sy + sh - 6, 4, 4);
-            ctx.fillRect(sx + sw - 6, sy + sh - 6, 4, 4);
+            // Industrial Metal
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(sx, sy, sw, sh / 2);
+            // Rivets
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            [[4, 4], [sw - 8, 4], [4, sh - 8], [sw - 8, sh - 8]].forEach(([rx, ry]) => {
+                ctx.beginPath();
+                ctx.arc(sx + rx, sy + ry, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            // Tread pattern
+            ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 10; i < sw; i += 15) {
+                ctx.beginPath();
+                ctx.moveTo(sx + i, sy + 5);
+                ctx.lineTo(sx + i + 5, sy + sh - 5);
+                ctx.stroke();
+            }
+
         } else if (type === 'gold') {
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.3)';
-            ctx.fillRect(sx + 5, sy + 5, sw - 10, sh - 10);
+            // Sparkling Gold
+            const sparkle = Math.sin(this.frame * 0.1 + index) * 0.5 + 0.5;
+            const grad = ctx.createLinearGradient(sx, sy, sx + sw, sy + sh);
+            grad.addColorStop(0, 'rgba(255, 255, 255, ' + (0.3 * sparkle) + ')');
+            grad.addColorStop(0.5, 'rgba(255, 255, 255, 0)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0.1)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(sx, sy, sw, sh);
+
+            // Royal border
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(sx + 3, sy + 3, sw - 6, sh - 6);
+
+        } else if (type === 'neon') {
+            // Cyberpunk Neon
+            ctx.strokeStyle = isVisited ? '#9F7AEA' : '#4FD1C5';
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.strokeRect(sx + 1, sy + 1, sw - 2, sh - 2);
+            ctx.shadowBlur = 0;
+
+            // Internal Grid
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(sx + sw / 3, sy); ctx.lineTo(sx + sw / 3, sy + sh);
+            ctx.moveTo(sx + 2 * sw / 3, sy); ctx.lineTo(sx + 2 * sw / 3, sy + sh);
+            ctx.stroke();
+
+        } else if (type === 'gothic') {
+            // Dark stone with red cracks
+            ctx.strokeStyle = 'rgba(229, 62, 62, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(sx + 5, sy + 5);
+            ctx.lineTo(sx + 15, sy + 12);
+            ctx.lineTo(sx + 10, sy + sh - 5);
+            ctx.moveTo(sx + sw - 10, sy + 2);
+            ctx.lineTo(sx + sw - 20, sy + 15);
+            ctx.stroke();
+
+            // Subtle bat/crest symbol
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+            ctx.beginPath();
+            ctx.arc(sx + sw / 2, sy + sh / 2, 6, 0, Math.PI, true);
+            ctx.lineTo(sx + sw / 2, sy + sh / 2 + 4);
+            ctx.fill();
+
+        } else if (type === 'glass') {
+            // Refractive Glass
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx + sw * 0.7, sy);
+            ctx.lineTo(sx + sw * 0.3, sy + sh);
+            ctx.lineTo(sx, sy + sh);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(sx, sy, sw, sh);
+        } else {
+            // Default - Stone texture
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            for (let i = 0; i < 5; i++) {
+                ctx.fillRect(sx + (i * 13) % sw, sy + (i * 7) % sh, 3, 3);
+            }
         }
     }
 
