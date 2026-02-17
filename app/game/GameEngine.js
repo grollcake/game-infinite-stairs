@@ -160,7 +160,7 @@ export class GameEngine {
             };
 
             // Spawn item (don't spawn on first few stairs or during cooldown)
-            if (i > 10 && this.itemSpawnCooldown <= 0 && Math.random() < 0.15) {
+            if (i > 10 && this.itemSpawnCooldown <= 0 && Math.random() < 0.15 * (this.itemSpawnMultiplier || 1)) {
                 const rand = Math.random();
                 let cumulative = 0;
                 for (const type of this.itemTypes) {
@@ -226,7 +226,7 @@ export class GameEngine {
             };
 
             // Spawn item (only if not rocketing or in fever)
-            if (this.itemSpawnCooldown <= 0 && !this.isRocketing && this.feverTimer <= 0 && Math.random() < 0.1) {
+            if (this.itemSpawnCooldown <= 0 && !this.isRocketing && this.feverTimer <= 0 && Math.random() < 0.1 * (this.itemSpawnMultiplier || 1)) {
                 const rand = Math.random();
                 let cumulative = 0;
                 const totalChance = this.itemTypes.reduce((sum, t) => sum + t.chance, 0);
@@ -501,7 +501,7 @@ export class GameEngine {
         localStorage.setItem('infiniteStairs_prevHighScore', this.highScore.toString());
 
         // Update total coins
-        const earnedCoins = this.score;
+        const earnedCoins = this.score * (this.coinMultiplier || 1);
         this.totalCoins += earnedCoins;
         localStorage.setItem('infiniteStairs_totalCoins', this.totalCoins.toString());
 
@@ -559,7 +559,7 @@ export class GameEngine {
         });
     }
 
-    startGame() {
+    startGame(options = {}) {
         this.state = 'playing';
         this.score = 0;
         this.energy = this.maxEnergy;
@@ -588,6 +588,25 @@ export class GameEngine {
         // Clear fire
         this.fireParticles = [];
         this.fireIntensity = 0;
+
+        // Apply shop options
+        this.coinMultiplier = 1;
+        if (options.energyMaster) {
+            this.energyDecayRate *= 0.8;
+        }
+        if (options.recoveryBoost) {
+            this.energyRecoverAmount *= 1.3;
+        }
+        if (options.coinBooster) {
+            this.coinMultiplier = 2;
+        }
+        if (options.startShield) {
+            this.activeShield = true;
+        }
+        if (options.feverStart) {
+            this.feverTimer = 180; // 3 seconds at 60fps
+        }
+        this.itemSpawnMultiplier = options.itemLuck ? 1.2 : 1;
 
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);

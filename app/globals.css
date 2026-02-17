@@ -1022,3 +1022,137 @@ body {
   animation-delay: 0.5s;
   opacity: 0;
 }
+
+/* ======== SHOP SCREEN ======== */
+.shop-screen {
+  justify-content: flex-start;
+  padding: 40px 20px 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.shop-coins {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffd700;
+  margin-bottom: 16px;
+}
+
+.shop-content {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding-bottom: 80px;
+}
+
+.shop-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.shop-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+
+.shop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.shop-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.shop-item.owned {
+  opacity: 0.5;
+}
+
+.shop-item-icon {
+  font-size: 24px;
+  width: 36px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.shop-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.shop-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shop-item-count {
+  font-size: 12px;
+  color: var(--gold);
+  font-weight: 700;
+}
+
+.shop-item-desc {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.shop-item-owned {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  padding: 4px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+}
+
+.shop-buy-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 14px;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15));
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: 8px;
+  color: #ffd700;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: inherit;
+}
+
+.shop-buy-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 165, 0, 0.25));
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.2);
+}
+
+.shop-buy-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.shop-buy-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}

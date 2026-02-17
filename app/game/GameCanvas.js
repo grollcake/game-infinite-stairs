@@ -8,7 +8,8 @@ const GameCanvas = forwardRef(({
     character,
     onGameOver,
     gameState,
-    onGameStart
+    onGameStart,
+    shopOptions
 }, ref) => {
     const canvasRef = useRef(null);
     const engineRef = useRef(null);
@@ -77,7 +78,7 @@ const GameCanvas = forwardRef(({
         engineRef.current = engine;
 
         // Start the game right away
-        engine.startGame();
+        engine.startGame(shopOptions || {});
 
         const gameLoop = () => {
             engine.update();
