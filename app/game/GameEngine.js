@@ -143,6 +143,10 @@ export class GameEngine {
         this.announcementTimer = 0;
         this.announcementColor = '#FFF';
 
+        this.hitMonster = false;
+        this.activeBranchStair = null;
+        this.monsterSpawnCooldown = 0;
+
         // Background Image Support
         this.bgImage = null;
         if (this.character.theme && this.character.theme.bgImage) {
@@ -159,6 +163,7 @@ export class GameEngine {
         let x = this.width / 2;
         let y = this.height - 100;
         let dir = 1; // 1 = right, -1 = left
+        let forcedNextDir = null;
 
         for (let i = 0; i < 200; i++) {
             const stair = {
@@ -178,9 +183,7 @@ export class GameEngine {
                     cumulative += type.chance * 2;
                     if (rand < cumulative) {
                         stair.item = { ...type };
-                        if (type.id === 'rocket') {
-                            this.itemSpawnCooldown = 20;
-                        }
+                        this.itemSpawnCooldown = type.id === 'rocket' ? 20 : 10;
                         break;
                     }
                 }
@@ -190,17 +193,57 @@ export class GameEngine {
 
             this.stairs.push(stair);
 
-            // Next stair direction
-            if (Math.random() < 0.4) {
-                dir = -dir;
+            // Preparation for next stair
+            const nextY = y - (this.stairHeight + 20);
+            let nextDir = dir;
+            if (forcedNextDir !== null) {
+                nextDir = forcedNextDir;
+                forcedNextDir = null;
+            } else if (Math.random() < 0.4) {
+                nextDir = -nextDir;
             }
 
-            x += dir * (this.stairWidth * 0.7);
-            y -= this.stairHeight + 20;
+            // Boundary checks for next position
+            let nextX = x + nextDir * (this.stairWidth * 0.7);
+            if (nextX < 80) { nextDir = 1; nextX = x + nextDir * (this.stairWidth * 0.7); }
+            if (nextX > this.width - 80) { nextDir = -1; nextX = x + nextDir * (this.stairWidth * 0.7); }
 
-            // Boundary checks
-            if (x < 80) { dir = 1; x = 80; }
-            if (x > this.width - 80) { dir = -1; x = this.width - 80; }
+            // Add branch gimmick (Variation: 1-step immediate or 2-step lure)
+            const monsterSpawnChance = Math.min(0.15, 0.03 + Math.floor(i / 50) * 0.01);
+            if (i > 30 && !stair.item && this.monsterSpawnCooldown <= 0 && Math.random() < monsterSpawnChance) {
+                const branchDir = -nextDir;
+                const b1x = x + branchDir * (this.stairWidth * 0.7);
+                const isTwoStep = Math.random() < 0.4;
+
+                if (b1x > 60 && b1x < this.width - 60) {
+                    if (isTwoStep) {
+                        const b2x = b1x + branchDir * (this.stairWidth * 0.7);
+                        if (b2x > 40 && b2x < this.width - 40) {
+                            const b1 = { x: b1x, y: nextY, direction: branchDir, width: this.stairWidth, visited: false };
+                            const b2 = {
+                                x: b2x, y: nextY - (this.stairHeight + 20), direction: branchDir, width: this.stairWidth, visited: false,
+                                isMonster: true, monsterType: ['👾', '👹', '👻', '💀'][Math.floor(Math.random() * 4)]
+                            };
+                            b1.next = b2;
+                            stair.branch = b1;
+                            this.monsterSpawnCooldown = 15;
+                            forcedNextDir = nextDir; // Force symmetry for the next level
+                        }
+                    } else {
+                        stair.branch = {
+                            x: b1x, y: nextY, direction: branchDir, width: this.stairWidth, visited: false,
+                            isMonster: true, monsterType: ['👾', '👹', '👻', '💀'][Math.floor(Math.random() * 4)]
+                        };
+                        this.monsterSpawnCooldown = 10;
+                    }
+                }
+            }
+
+            if (this.monsterSpawnCooldown > 0) this.monsterSpawnCooldown--;
+
+            dir = nextDir;
+            x = nextX;
+            y = nextY;
         }
     }
 
@@ -213,24 +256,30 @@ export class GameEngine {
 
     generateMoreStairs() {
         const lastStair = this.stairs[this.stairs.length - 1];
-        let x = lastStair.x;
-        let y = lastStair.y;
-        let dir = lastStair.direction;
+        let forcedNextDir = null;
 
         for (let i = 0; i < 50; i++) {
-            if (Math.random() < 0.4) {
-                dir = -dir;
-            }
-            x += dir * (this.stairWidth * 0.7);
-            y -= this.stairHeight + 20;
+            const prevStair = i === 0 ? lastStair : this.stairs[this.stairs.length - 1];
+            let nextDir = prevStair.direction;
 
-            if (x < 80) { dir = 1; x = 80; }
-            if (x > this.width - 80) { dir = -1; x = this.width - 80; }
+            if (forcedNextDir !== null) {
+                nextDir = forcedNextDir;
+                forcedNextDir = null;
+            } else if (Math.random() < 0.4) {
+                nextDir = -nextDir;
+            }
+
+            let nextX = prevStair.x + nextDir * (this.stairWidth * 0.7);
+            const nextY = prevStair.y - (this.stairHeight + 20);
+
+            // Boundary checks for next position
+            if (nextX < 80) { nextDir = 1; nextX = prevStair.x + nextDir * (this.stairWidth * 0.7); }
+            if (nextX > this.width - 80) { nextDir = -1; nextX = prevStair.x + nextDir * (this.stairWidth * 0.7); }
 
             const stair = {
-                x: x,
-                y: y,
-                direction: dir,
+                x: nextX,
+                y: nextY,
+                direction: nextDir,
                 width: this.stairWidth,
                 visited: false,
                 item: null
@@ -247,15 +296,49 @@ export class GameEngine {
                     cumulative += type.chance;
                     if (normalizedRand < cumulative) {
                         stair.item = { ...type };
-                        if (type.id === 'rocket') {
-                            this.itemSpawnCooldown = 20;
-                        }
+                        this.itemSpawnCooldown = type.id === 'rocket' ? 20 : 10;
                         break;
                     }
                 }
             }
 
             if (this.itemSpawnCooldown > 0) this.itemSpawnCooldown--;
+
+            // Add branch gimmick to the PREVIOUS stair
+            const currentHeight = this.stairs.length;
+            const monsterSpawnChance = Math.min(0.15, 0.03 + Math.floor(currentHeight / 50) * 0.01);
+
+            if (prevStair && !prevStair.item && !prevStair.branch && this.monsterSpawnCooldown <= 0 && Math.random() < monsterSpawnChance) {
+                const branchDir = -nextDir;
+                const b1x = prevStair.x + branchDir * (this.stairWidth * 0.7);
+                const isTwoStep = Math.random() < 0.4;
+
+                if (b1x > 60 && b1x < this.width - 60) {
+                    if (isTwoStep) {
+                        const b2x = b1x + branchDir * (this.stairWidth * 0.7);
+                        if (b2x > 40 && b2x < this.width - 40) {
+                            const b1 = { x: b1x, y: nextY, direction: branchDir, width: this.stairWidth, visited: false };
+                            const b2 = {
+                                x: b2x, y: nextY - (this.stairHeight + 20), direction: branchDir, width: this.stairWidth, visited: false,
+                                isMonster: true, monsterType: ['👾', '👹', '👻', '💀'][Math.floor(Math.random() * 4)]
+                            };
+                            b1.next = b2;
+                            prevStair.branch = b1;
+                            this.monsterSpawnCooldown = 15;
+                            forcedNextDir = nextDir; // Ensure symmetry by keeping original path's direction straight
+                        }
+                    } else {
+                        prevStair.branch = {
+                            x: b1x, y: nextY, direction: branchDir, width: this.stairWidth, visited: false,
+                            isMonster: true, monsterType: ['👾', '👹', '👻', '💀'][Math.floor(Math.random() * 4)]
+                        };
+                        this.monsterSpawnCooldown = 10;
+                    }
+                }
+            }
+
+            if (this.monsterSpawnCooldown > 0) this.monsterSpawnCooldown--;
+
             this.stairs.push(stair);
         }
     }
@@ -304,6 +387,45 @@ export class GameEngine {
         // Fever mode, Rocket mode or Auto-direction test mode: automatically face the right way
         if (this.feverTimer > 0 || this.isRocketing || this.autoDirection) {
             this.playerDirection = expectedDir;
+        }
+
+        // --- BRANCH LOGIC ---
+        // If on the intermediate step of a 2-step branch, next step is the monster
+        if (this.activeBranchStair && this.activeBranchStair.next) {
+            const monsterStair = this.activeBranchStair.next;
+            this.isMoving = true;
+            this.moveProgress = 0;
+            this.targetX = monsterStair.x;
+            this.targetY = monsterStair.y - 16;
+            this.moveStartX = this.playerX;
+            this.moveStartY = this.playerY;
+            this.hitMonster = true;
+            this.activeBranchStair = null;
+            return;
+        }
+
+        // Check for branch selection from safe path
+        if (currentStair.branch) {
+            const branchDx = currentStair.branch.x - currentStair.x;
+            const branchDir = branchDx > 0 ? 1 : -1;
+
+            if (this.playerDirection === branchDir) {
+                this.isMoving = true;
+                this.moveProgress = 0;
+                this.targetX = currentStair.branch.x;
+                this.targetY = currentStair.branch.y - 16;
+                this.moveStartX = this.playerX;
+                this.moveStartY = this.playerY;
+
+                if (currentStair.branch.next) {
+                    // This is the first step of a 2-step branch, player moves to b1
+                    this.activeBranchStair = currentStair.branch;
+                } else {
+                    // This is a 1-step branch, player moves directly to the monster
+                    this.hitMonster = true;
+                }
+                return;
+            }
         }
 
         if (this.playerDirection !== expectedDir) {
@@ -536,6 +658,7 @@ export class GameEngine {
         this.isShielding = false;
         this.isRocketing = false;
         this.feverTimer = 0;
+        this.activeBranchStair = null;
 
         // Position on current stair
         this.positionPlayerOnStair(this.currentStairIndex);
@@ -604,6 +727,10 @@ export class GameEngine {
         this.feverTimer = 0;
         this.isRocketing = false;
         this.rocketStepsRemaining = 0;
+        this.itemSpawnCooldown = 0;
+        this.hitMonster = false;
+        this.activeBranchStair = null;
+        this.monsterSpawnCooldown = 0;
 
         // Clear fire
         this.fireParticles = [];
@@ -829,6 +956,17 @@ export class GameEngine {
                 this.isMoving = false;
                 this.playerX = this.targetX;
                 this.playerY = this.targetY;
+
+                // Check if we hit a monster
+                if (this.hitMonster) {
+                    this.addFloatingText('GGGRRRRR!!', this.playerX, this.playerY - 50, '#FF0000', 1.5);
+                    this.screenShake = 15;
+                    setTimeout(() => {
+                        this.triggerGameOver();
+                        this.hitMonster = false;
+                    }, 500);
+                    return;
+                }
 
                 // Process queued inputs
                 this.processInputQueue();
@@ -1067,9 +1205,15 @@ export class GameEngine {
         this.renderStepParticles(ctx);
 
         // Render floating texts (in world space)
+        // ... existing world-space rendering (stairs, player, particles)
         this.renderFloatingTexts(ctx);
 
-        ctx.restore();
+        ctx.restore(); // Restore Camera transform (Save 2)
+        ctx.restore(); // Restore Zoom and Shake (Save 1)
+
+        // Switch to Screen-space rendering (but still logical scale)
+        ctx.save();
+        ctx.scale(this.scale, this.scale);
 
         // Render weather particles (in screen space)
         this.renderWeatherParticles(ctx);
@@ -1106,7 +1250,7 @@ export class GameEngine {
             }
         }
 
-        ctx.restore();
+        ctx.restore(); // Final restore for logical scale save in this new block
     }
 
     renderStairs(ctx) {
@@ -1193,7 +1337,60 @@ export class GameEngine {
                 const labelY = type === 'transparent_with_flag' ? sy + sh + 15 : sy + sh - 3;
                 ctx.fillText(`${i}`, stair.x, labelY);
             }
+
+            // Render branch (monster path)
+            if (stair.branch) {
+                const b1 = stair.branch;
+                const b1sx = b1.x - b1.width / 2;
+                const b1sy = b1.y;
+
+                // Render first branch step
+                this.renderStair(ctx, b1sx, b1sy, b1.width, this.stairHeight, b1, -1, theme);
+
+                // If 1-step monster, render effect on b1
+                if (b1.isMonster) {
+                    this.renderMonsterEffect(ctx, b1, i);
+                }
+
+                // If 2-step monster, render b2 and effect on b2
+                if (b1.next) {
+                    const b2 = b1.next;
+                    const b2sx = b2.x - b2.width / 2;
+                    const b2sy = b2.y;
+                    this.renderStair(ctx, b2sx, b2sy, b2.width, this.stairHeight, b2, -1, theme);
+                    this.renderMonsterEffect(ctx, b2, i);
+                }
+            }
         }
+    }
+
+    renderMonsterEffect(ctx, branchStair, index) {
+        ctx.save();
+        ctx.translate(branchStair.x, branchStair.y - 12);
+        const monsterBob = Math.sin(this.frame * 0.15 + index) * 6;
+        ctx.translate(0, monsterBob);
+
+        // Danger area glow
+        const areaGlow = ctx.createRadialGradient(0, 12, 5, 0, 12, 35);
+        areaGlow.addColorStop(0, 'rgba(255, 0, 0, 0.4)');
+        areaGlow.addColorStop(1, 'rgba(255, 0, 0, 0)');
+        ctx.fillStyle = areaGlow;
+        ctx.fillRect(-branchStair.width / 2, 0, branchStair.width, 20);
+
+        // Monster emoji
+        ctx.font = '24px serif';
+        ctx.textAlign = 'center';
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = '#FF0000';
+        ctx.fillText(branchStair.monsterType, 0, 10);
+
+        // Dangerous label
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#FF0000';
+        ctx.font = 'bold 9px "Outfit", sans-serif';
+        ctx.fillText('DANGER', 0, -12);
+
+        ctx.restore();
     }
 
     renderStepParticles(ctx) {
