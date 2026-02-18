@@ -71,6 +71,11 @@ export class SoundManager {
     setTimeout(() => this.playTone(1200, 0.15, 'sine', 0.15), 50);
   }
 
+  playCoinCollect() {
+    // High pitched "ting" sound
+    this.playTone(1500, 0.05, 'sine', 0.1);
+  }
+
   playUnlock() {
     const notes = [440, 554, 659, 880, 1047];
     notes.forEach((freq, i) => {

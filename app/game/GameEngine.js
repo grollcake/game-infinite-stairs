@@ -119,6 +119,7 @@ export class GameEngine {
         this.isRocketing = false;
         this.rocketStepsRemaining = 0;
         this.itemTypes = [
+            { id: 'coin', label: '💰', color: '#FFD700', chance: 0.12 },
             { id: 'shield', label: '🛡️', color: '#44BBFF', chance: 0.04 },
             { id: 'fever', label: '🔥', color: '#FF4444', chance: 0.03 },
             { id: 'rocket', label: '🚀', color: '#FF8800', chance: 0.02 }
@@ -146,6 +147,9 @@ export class GameEngine {
         this.hitMonster = false;
         this.activeBranchStair = null;
         this.monsterSpawnCooldown = 0;
+        this.magnetCoins = [];
+        this.hudCoinScale = 1;
+        this.sessionCoins = 0;
 
         // Background Image Support
         this.bgImage = null;
@@ -156,6 +160,83 @@ export class GameEngine {
 
         this.generateInitialStairs();
         this.positionPlayerOnStair(0);
+    }
+
+    spawnMagnetCoins(count) {
+        // Character's screen position
+        // We need to convert world playerX, playerY to screen space
+        // Player is rendered at playerX, playerY in world space
+        // Camera is at cameraY
+        const screenX = this.playerX;
+        const screenY = this.playerY - this.cameraY;
+
+        for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 5 + Math.random() * 10;
+            this.magnetCoins.push({
+                x: screenX,
+                y: screenY,
+                vx: (Math.random() - 0.5) * 15,
+                vy: (Math.random() - 1) * 15, // fly upwards
+                life: 0,
+                state: 'exploding', // exploding -> magnetizing
+                delay: i * 0.4 // Faster stagger for large counts
+            });
+        }
+
+        soundManager.playMilestone?.();
+    }
+
+    updateMagnetCoins() {
+        // HUD Coin target position (Top Left area)
+        const padding = 15;
+        const targetX = padding + 125; // Center of our coin HUD
+        const targetY = padding + 22;
+
+        for (let i = this.magnetCoins.length - 1; i >= 0; i--) {
+            const coin = this.magnetCoins[i];
+
+            if (coin.delay > 0) {
+                coin.delay--;
+                continue;
+            }
+
+            coin.life++;
+
+            if (coin.state === 'exploding') {
+                coin.x += coin.vx;
+                coin.y += coin.vy;
+                coin.vx *= 0.92;
+                coin.vy *= 0.92;
+                coin.vy += 0.2; // gravity
+
+                if (coin.life > 10) { // Shorter explosion phase
+                    coin.state = 'magnetizing';
+                }
+            } else {
+                // Magnet logic
+                const dx = targetX - coin.x;
+                const dy = targetY - coin.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < 10) {
+                    this.magnetCoins.splice(i, 1);
+                    this.sessionCoins++;
+                    this.hudCoinScale = 1.6; // pulse HUD
+                    soundManager.playCoinCollect?.();
+                    continue;
+                }
+
+                const speed = Math.min(dist * 0.25, 30); // Faster snap (0.15 -> 0.25)
+                coin.x += (dx / dist) * speed;
+                coin.y += (dy / dist) * speed;
+            }
+        }
+
+        // Decay HUD pulse
+        if (this.hudCoinScale > 1) {
+            this.hudCoinScale += (1 - this.hudCoinScale) * 0.15;
+        }
     }
 
     generateInitialStairs() {
@@ -478,6 +559,13 @@ export class GameEngine {
         this.combo++;
         this.comboTimer = 60;
 
+        // Coin celebration every 10 combo (Exponential growth: 2, 4, 8, 16...)
+        if (this.combo > 0 && this.combo % 10 === 0) {
+            const milestone = this.combo / 10;
+            const coinCount = Math.min(256, Math.pow(2, milestone));
+            this.spawnMagnetCoins(coinCount);
+        }
+
         // Sound
         soundManager.playStep(this.score);
 
@@ -528,9 +616,14 @@ export class GameEngine {
 
     handleItemPickup(item) {
         soundManager.playItemPickup();
-        this.addFloatingText(`${item.label} GET!`, this.playerX, this.playerY - 40, item.color, 1.2);
+        if (item.id !== 'coin') {
+            this.addFloatingText(`${item.label} GET!`, this.playerX, this.playerY - 40, item.color, 1.2);
+        }
 
         switch (item.id) {
+            case 'coin':
+                this.spawnMagnetCoins(10);
+                break;
             case 'energy':
                 this.energy = Math.min(this.maxEnergy, this.energy + 30);
                 break;
@@ -639,8 +732,8 @@ export class GameEngine {
 
         localStorage.setItem('infiniteStairs_prevHighScore', this.highScore.toString());
 
-        // Update total coins
-        const earnedCoins = this.score * (this.coinMultiplier || 1);
+        // Update total coins (Purely from collected session coins now)
+        const earnedCoins = this.sessionCoins * (this.coinMultiplier || 1);
         this.totalCoins += earnedCoins;
         localStorage.setItem('infiniteStairs_totalCoins', this.totalCoins.toString());
 
@@ -659,6 +752,9 @@ export class GameEngine {
         this.isRocketing = false;
         this.feverTimer = 0;
         this.activeBranchStair = null;
+        this.magnetCoins = [];
+        this.sessionCoins = 0;
+        this.hudCoinScale = 1;
 
         // Position on current stair
         this.positionPlayerOnStair(this.currentStairIndex);
@@ -731,6 +827,9 @@ export class GameEngine {
         this.hitMonster = false;
         this.activeBranchStair = null;
         this.monsterSpawnCooldown = 0;
+        this.magnetCoins = [];
+        this.sessionCoins = 0;
+        this.hudCoinScale = 1;
 
         // Clear fire
         this.fireParticles = [];
@@ -786,6 +885,7 @@ export class GameEngine {
 
     update() {
         this.frame++;
+        this.updateMagnetCoins();
 
         // Handle falling state
         if (this.state === 'falling') {
@@ -1215,6 +1315,9 @@ export class GameEngine {
         ctx.save();
         ctx.scale(this.scale, this.scale);
 
+        // Magnet Coins (rendered above weather but below HUD)
+        this.renderMagnetCoins(ctx);
+
         // Render weather particles (in screen space)
         this.renderWeatherParticles(ctx);
 
@@ -1391,6 +1494,38 @@ export class GameEngine {
         ctx.fillText('DANGER', 0, -12);
 
         ctx.restore();
+    }
+
+    renderMagnetCoins(ctx) {
+        for (const coin of this.magnetCoins) {
+            if (coin.delay > 0) continue;
+
+            ctx.save();
+            ctx.translate(coin.x, coin.y);
+
+            // Spinning effect
+            const spin = Math.sin(this.frame * 0.2 + coin.life * 0.1);
+            ctx.scale(Math.abs(spin), 1);
+
+            // Outer gold
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Border
+            ctx.strokeStyle = '#DAA520';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Shiny highlight
+            ctx.fillStyle = '#FFF';
+            ctx.beginPath();
+            ctx.arc(-2, -2, 2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
     }
 
     renderStepParticles(ctx) {
@@ -1817,177 +1952,144 @@ export class GameEngine {
 
     renderHUD(ctx) {
         const w = this.width;
-        const h = this.height;
         const padding = 15;
+        const hudH = 40;
+        const hudY = padding;
 
-        // Score display
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        // 1. Unified Stats Bar (Score & Coins)
+        const statsBarW = 180;
+        ctx.save();
+        // Glassmorphism background
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
         ctx.beginPath();
-        ctx.roundRect(padding, padding, 100, 45, 12);
+        ctx.roundRect(padding, hudY, statsBarW, hudH, hudH / 2);
         ctx.fill();
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 11px "Outfit", sans-serif';
+        // Vertical Separator
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding + statsBarW / 2, hudY + 8);
+        ctx.lineTo(padding + statsBarW / 2, hudY + hudH - 8);
+        ctx.stroke();
+
+        // Score Section
         ctx.textAlign = 'left';
-        ctx.fillText('점수', padding + 12, padding + 16);
-        ctx.font = 'bold 22px "Outfit", sans-serif';
-        ctx.fillText(this.score.toString(), padding + 12, padding + 38);
+        ctx.textBaseline = 'middle';
+        ctx.font = '16px "Outfit", sans-serif';
+        ctx.fillText('🏆', padding + 12, hudY + hudH / 2);
 
-        // Energy bar
-        const barWidth = w - 2 * padding;
-        const barHeight = 12;
-        const barY = this.height - padding - barHeight;
+        ctx.font = 'bold 18px "Outfit", sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(this.score.toString(), padding + 35, hudY + hudH / 2 + 1);
 
-        // Bar background
-        ctx.fillStyle = 'rgba(0,0,0,0.4)';
-        ctx.beginPath();
-        ctx.roundRect(padding, barY - 2, barWidth, barHeight + 4, 8);
-        ctx.fill();
+        // Coin Section
+        const coinStartX = padding + statsBarW / 2 + 12;
+        // Miniature silver/gold coin icon
+        ctx.save();
+        ctx.translate(coinStartX + 5, hudY + hudH / 2);
+        ctx.scale(this.hudCoinScale, this.hudCoinScale);
+        ctx.fillStyle = '#FFD700';
+        ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 1.5; ctx.stroke();
+        ctx.fillStyle = '#FFF'; ctx.beginPath(); ctx.arc(-2, -2, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
 
-        // Energy level
-        const energyRatio = this.energy / this.maxEnergy;
-        let barColor;
-        if (energyRatio > 0.5) {
-            barColor = `hsl(${120 * energyRatio + 20}, 80%, 55%)`;
-        } else if (energyRatio > 0.25) {
-            barColor = '#FFB800';
-        } else {
-            barColor = '#FF4444';
-            // Low energy pulse
-            if (Math.floor(this.frame / 8) % 2 === 0) {
-                barColor = '#FF6666';
-            }
-        }
+        ctx.font = 'bold 18px "Outfit", sans-serif';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(this.sessionCoins.toString(), coinStartX + 20, hudY + hudH / 2 + 1);
+        ctx.restore();
 
-        const gradient = ctx.createLinearGradient(padding, barY, padding, barY + barHeight);
-        gradient.addColorStop(0, barColor);
-        gradient.addColorStop(1, barColor.replace('55%', '40%'));
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.roundRect(padding + 2, barY, (barWidth - 4) * energyRatio, barHeight, 6);
-        ctx.fill();
-
-        // Energy shine
-        ctx.fillStyle = 'rgba(255,255,255,0.2)';
-        ctx.beginPath();
-        ctx.roundRect(padding + 2, barY, (barWidth - 4) * energyRatio, barHeight / 2, 6);
-        ctx.fill();
-
-        // Energy label
-        ctx.fillStyle = '#FFF';
-        ctx.font = 'bold 9px "Outfit", sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('⚡ 에너지', w / 2, barY - 6);
-
-        // 1. Combo Display (Fixed Top-Right)
+        // 2. Combo Display (Top Right - Minimalist)
         if (this.combo > 2) {
-            const comboW = 85;
-            const comboH = 42;
-            const comboX = w - padding - comboW;
-            const comboY = padding;
-
+            const comboW = 70;
             const intensity = Math.min(1, this.combo / 100);
             const comboColor = `hsl(${45 - intensity * 45}, 100%, 50%)`;
 
             ctx.save();
-            // Background box
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.beginPath();
-            ctx.roundRect(comboX, comboY, comboW, comboH, 12);
-            ctx.fill();
-
-            // Combo Timer Bar
-            const timerRatio = this.comboTimer / 60;
-            ctx.fillStyle = comboColor;
-            ctx.beginPath();
-            ctx.roundRect(comboX + 5, comboY + comboH - 6, (comboW - 10) * timerRatio, 3, 2);
-            ctx.fill();
-
-            // Combo Text with pop effect
-            const pop = 1 + Math.max(0, Math.sin(this.combo * 0.5) * 0.12);
-            ctx.translate(comboX + comboW / 2, comboY + 20);
-            ctx.scale(pop, pop);
-
-            ctx.fillStyle = comboColor;
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 15;
             ctx.shadowColor = comboColor;
-            ctx.font = 'bold 18px "Outfit", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${this.combo}`, 0, 0);
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = comboColor;
+            ctx.font = 'bold 24px "Outfit", sans-serif';
+            ctx.fillText(`${this.combo}`, w - padding, hudY + hudH / 2 - 5);
 
             ctx.font = 'bold 9px "Outfit", sans-serif';
-            ctx.globalAlpha = 0.9;
-            ctx.fillText('COMBO', 0, 12);
+            ctx.globalAlpha = 0.8;
+            ctx.fillText('COMBO', w - padding, hudY + hudH / 2 + 12);
+
+            const timerRatio = this.comboTimer / 60;
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath();
+            ctx.roundRect(w - padding - 60, hudY + hudH - 4, 60, 3, 2);
+            ctx.fill();
+
+            ctx.fillStyle = comboColor;
+            ctx.beginPath();
+            ctx.roundRect(w - padding - 60 * timerRatio, hudY + hudH - 4, 60 * timerRatio, 3, 2);
+            ctx.fill();
             ctx.restore();
         }
 
-        // 2. Announcement Display (Fixed Top-Center milestone messages)
+        // 3. Announcement Display (Top Center)
         if (this.announcementTimer > 0) {
             ctx.save();
-            const centerX = w / 2;
-            const centerY = padding + 65;
             const alpha = Math.min(1, this.announcementTimer / 20);
-
             ctx.globalAlpha = alpha;
             ctx.fillStyle = this.announcementColor;
             ctx.shadowBlur = 15;
             ctx.shadowColor = this.announcementColor;
             ctx.font = 'bold 20px "Outfit", sans-serif';
             ctx.textAlign = 'center';
-
-            // Subtle float up
-            const offsetY = (1 - alpha) * 15;
-            ctx.fillText(this.announcementText, centerX, centerY + offsetY);
+            ctx.fillText(this.announcementText, w / 2, hudY + hudH + 30 + (1 - alpha) * 15);
             ctx.restore();
         }
 
-        // Direction indicator
-        const arrowX = w / 2;
-        const arrowY = padding + 20;
-        ctx.fillStyle = 'rgba(255,255,255,0.15)';
+        // 4. Energy Bar (Bottom - Refined)
+        const barWidth = w - 2 * padding;
+        const barHeight = 8;
+        const barY = this.height - padding - barHeight - 5;
+
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
         ctx.beginPath();
-        ctx.roundRect(arrowX - 30, padding, 60, 30, 10);
+        ctx.roundRect(padding, barY - 2, barWidth, barHeight + 4, 6);
         ctx.fill();
-        ctx.fillStyle = '#FFF';
-        ctx.font = '18px "Outfit", sans-serif';
+
+        const energyRatio = this.energy / this.maxEnergy;
+        let barColor = energyRatio > 0.5 ? `hsl(${120 * energyRatio + 20}, 80%, 55%)` : (energyRatio > 0.25 ? '#FFB800' : '#FF4444');
+        if (energyRatio <= 0.25 && Math.floor(this.frame / 8) % 2 === 0) barColor = '#FF6666';
+
+        ctx.fillStyle = barColor;
+        ctx.shadowBlur = energyRatio < 0.3 ? 10 : 0;
+        ctx.shadowColor = barColor;
+        ctx.beginPath();
+        ctx.roundRect(padding + 2, barY, (barWidth - 4) * energyRatio, barHeight, 4);
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = 'bold 8px "Outfit", sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(this.playerDirection > 0 ? '→' : '←', arrowX, arrowY + 5);
+        ctx.fillText('ENERGY', w / 2, barY - 6);
 
         // Fever Mode Countdown
         if (this.feverTimer > 0) {
             const secondsLeft = (this.feverTimer / 60).toFixed(1);
             const feverProgress = this.feverTimer / 300;
             ctx.save();
-            ctx.translate(w / 2, h / 2 - 100);
-
-            // Background bar
-            const barW = 120;
-            const barH = 8;
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
-            ctx.beginPath();
-            ctx.roundRect(-barW / 2, 35, barW, barH, 4);
-            ctx.fill();
-
-            // Progress bar
+            ctx.translate(w / 2, this.height / 2 - 100);
             ctx.fillStyle = '#FF4444';
-            ctx.shadowBlur = 10;
-            ctx.shadowColor = '#FF0000';
-            ctx.beginPath();
-            ctx.roundRect(-barW / 2, 35, barW * feverProgress, barH, 4);
-            ctx.fill();
-
-            // Text
-            ctx.fillStyle = '#FF4444';
-            ctx.font = 'bold 32px "Outfit", sans-serif';
+            ctx.font = 'bold 36px "Outfit", sans-serif';
             ctx.textAlign = 'center';
-            ctx.shadowBlur = 15;
+            ctx.shadowBlur = 20;
             ctx.shadowColor = '#FF0000';
             ctx.fillText(`FEVER!`, 0, 0);
-
+            ctx.fillStyle = 'rgba(255,255,255,0.2)';
+            ctx.beginPath(); ctx.roundRect(-50, 20, 100, 4, 2); ctx.fill();
             ctx.fillStyle = '#FFF';
-            ctx.font = 'bold 20px "Outfit", sans-serif';
-            ctx.fillText(`${secondsLeft}s`, 0, 25);
-
+            ctx.beginPath(); ctx.roundRect(-50, 20, 100 * feverProgress, 4, 2); ctx.fill();
+            ctx.font = 'bold 16px "Outfit", sans-serif';
+            ctx.fillText(`${secondsLeft}s`, 0, 45);
             ctx.restore();
         }
     }
